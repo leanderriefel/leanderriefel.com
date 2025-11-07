@@ -1,9 +1,62 @@
 import { JSX, Signal } from "solid-js"
 
-export interface App {
-  name: Signal<string> | string
-  icon: Signal<string> | string
-  color: Signal<string> | string
-  display: Signal<"default" | "minimized" | "maximized" | "fullscreen">
-  render: () => JSX.Element
+export abstract class App {
+  id: string
+  abstract name: Signal<string> | string
+  abstract icon: Signal<string> | string
+  abstract render: () => JSX.Element
+
+  color?: Signal<string> | string
+  defaultSize?:
+    | Signal<{
+        width: number
+        height: number
+      }>
+    | {
+        width: number
+        height: number
+      }
+
+  static appName: string
+  static appIcon: string
+  static appColor?: string
+
+  constructor() {
+    this.id = crypto.randomUUID()
+  }
+
+  static getMetadata() {
+    return {
+      name: this.appName,
+      icon: this.appIcon,
+      color: this.appColor,
+    }
+  }
+}
+
+type AppClass = {
+  new (): App
+  appName: string
+  appIcon: string
+  appColor?: string
+  getMetadata(): {
+    name: string
+    icon: string
+    color?: string
+  }
+}
+
+export const appRegistry: Array<AppClass> = []
+
+export const registerApp = (AppClass: AppClass) => {
+  if (appRegistry.some((app) => app === AppClass)) return
+  appRegistry.push(AppClass)
+}
+
+export const getAllAppMetadata = () => {
+  return appRegistry.map((AppClass) => AppClass.getMetadata())
+}
+
+export const createAppInstance = (AppClass: AppClass): App => {
+  return new AppClass()
 }

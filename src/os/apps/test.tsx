@@ -1,18 +1,21 @@
 import { Signal, createSignal } from "solid-js"
 import { App } from "~/os"
 
-export class TestApp implements App {
-  name = "Test"
-  icon = "test"
-  color = "red"
-  display: Signal<"default" | "minimized" | "maximized" | "fullscreen">
+export class TestApp extends App {
+  static appName = "Test"
+  static appIcon = "test"
+  static appColor = "red"
+
+  name = TestApp.appName
+  icon = TestApp.appIcon
+  color = TestApp.appColor
 
   private count: Signal<number>
   private message: Signal<string>
   private isVisible: Signal<boolean>
 
-  constructor(display: Signal<"default" | "minimized" | "maximized" | "fullscreen">) {
-    this.display = display
+  constructor() {
+    super()
     this.count = createSignal(0)
     this.message = createSignal("Hello from Test App!")
     this.isVisible = createSignal(true)
@@ -24,7 +27,7 @@ export class TestApp implements App {
     const [isVisible, setIsVisible] = this.isVisible
 
     return (
-      <div class="space-y-4">
+      <div class="space-y-4 p-10">
         <h2 class="text-lg font-bold text-white @sm:text-xl @md:text-2xl @lg:text-3xl">{message()}</h2>
 
         {isVisible() && (

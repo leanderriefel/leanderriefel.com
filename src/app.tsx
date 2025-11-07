@@ -1,7 +1,8 @@
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
-import "./app.css";
+import { Router } from "@solidjs/router"
+import { FileRoutes } from "@solidjs/start/router"
+import { Suspense } from "solid-js"
+import "./app.css"
+import "~/os/apps"
 
 export default function App() {
   return (
@@ -14,5 +15,5 @@ export default function App() {
     >
       <FileRoutes />
     </Router>
-  );
+  )
 }

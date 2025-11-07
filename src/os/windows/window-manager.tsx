@@ -1,7 +1,7 @@
 import { XIcon, MinusIcon, SquareIcon, Maximize2Icon } from "lucide-solid"
 import { For, Signal, createSignal, onCleanup, onMount } from "solid-js"
 import { App } from "~/os"
-import { openApps, setOpenApps } from "~/os/windows/open-windows"
+import { bringToFront, closeApp, getZIndex, openApps } from "~/os/windows/open-windows"
 
 export interface WindowProps {
   app: App
@@ -14,11 +14,10 @@ export interface WindowProps {
     height: number
   }>
   display: Signal<"default" | "minimized" | "maximized" | "fullscreen">
-  index?: number
 }
 
 export const WindowManager = () => {
-  return <For each={openApps.apps}>{(props, index) => <Window {...props} index={index()} />}</For>
+  return <For each={openApps.apps}>{(props) => <Window {...props} />}</For>
 }
 
 export const Window = (props: WindowProps) => {
@@ -33,14 +32,7 @@ export const Window = (props: WindowProps) => {
   const handleClose = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (props.index !== undefined) {
-      const idx = props.index
-      setOpenApps("apps", (apps) => {
-        const newApps = [...apps]
-        newApps.splice(idx, 1)
-        return newApps
-      })
-    }
+    closeApp(props.app)
   }
 
   const handleMinimize = (e: MouseEvent) => {
@@ -66,6 +58,7 @@ export const Window = (props: WindowProps) => {
       windowY: currentPos.y,
     })
     setIsDragging(true)
+    bringToFront(props.app.id)
   }
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -97,16 +90,17 @@ export const Window = (props: WindowProps) => {
 
   return (
     <div
-      class="grid-rows[auto_1fr] absolute grid rounded-xl border border-white/25 backdrop-blur-xl"
+      class="grid-rows[auto_1fr] absolute grid rounded-xl border-2 border-white/10 bg-black/25 backdrop-blur-3xl"
       style={{
         top: `${props.position[0]().y}px`,
         left: `${props.position[0]().x}px`,
         width: `${props.size[0]().width}px`,
         height: `${props.size[0]().height}px`,
+        "z-index": `${getZIndex(props.app.id)}`,
       }}
     >
       <div
-        class="flex h-8 w-full cursor-move items-center justify-between gap-2 bg-black/25 px-2"
+        class="flex h-8 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl bg-black/50 px-2"
         onMouseDown={handleMouseDown}
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -142,7 +136,19 @@ export const Window = (props: WindowProps) => {
           </button>
         </div>
       </div>
-      <div class="size-full grow">{props.app.render()}</div>
+      <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
+
+      {/* Red edge handles - full edges */}
+      <div data-handle="top" class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize" />
+      <div data-handle="bottom" class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize" />
+      <div data-handle="left" class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize" />
+      <div data-handle="right" class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize" />
+
+      {/* Blue corner handles */}
+      <div data-handle="top-left" class="absolute -top-2 -left-2 size-3 cursor-nwse-resize" />
+      <div data-handle="top-right" class="absolute -top-2 -right-2 size-3 cursor-nesw-resize" />
+      <div data-handle="bottom-left" class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize" />
+      <div data-handle="bottom-right" class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize" />
     </div>
   )
 }
