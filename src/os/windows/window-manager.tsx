@@ -1,26 +1,17 @@
 import { XIcon, MinusIcon, SquareIcon, Maximize2Icon } from "lucide-solid"
-import { For, Signal, createSignal, onCleanup, onMount } from "solid-js"
-import { App } from "~/os"
-import { bringToFront, closeApp, getZIndex, openApps } from "~/os/windows/open-windows"
+import { For, createSignal, onCleanup, onMount } from "solid-js"
+import { OsWindow } from "~/os"
+import { bringToFront, closeApp, getZIndex, minimizeApp, openApps, setOpenApps } from "~/os/windows/open-windows"
+import { isFocused } from "~/os/focus"
 
-export interface WindowProps {
-  app: App
-  position: Signal<{
-    x: number
-    y: number
-  }>
-  size: Signal<{
-    width: number
-    height: number
-  }>
-  display: Signal<"default" | "minimized" | "maximized" | "fullscreen">
-}
+const MIN_WIDTH = 200
+const MIN_HEIGHT = 100
 
 export const WindowManager = () => {
   return <For each={openApps.apps}>{(props) => <Window {...props} />}</For>
 }
 
-export const Window = (props: WindowProps) => {
+export const Window = (props: OsWindow) => {
   const [isDragging, setIsDragging] = createSignal(false)
   const [dragStart, setDragStart] = createSignal<{
     mouseX: number
@@ -29,28 +20,42 @@ export const Window = (props: WindowProps) => {
     windowY: number
   } | null>(null)
 
+  const [isResizing, setIsResizing] = createSignal(false)
+  const [resizeStart, setResizeStart] = createSignal<{
+    mouseX: number
+    mouseY: number
+    windowX: number
+    windowY: number
+    width: number
+    height: number
+    handle: string
+  } | null>(null)
+
   const handleClose = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    closeApp(props.app)
+    closeApp(props.id)
   }
 
   const handleMinimize = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    props.display[1]("minimized")
+    const appId = props.id
+    minimizeApp(appId)
   }
 
   const handleMaximize = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const currentDisplay = props.display[0]()
-    props.display[1](currentDisplay === "maximized" ? "default" : "maximized")
+    const currentDisplay = props.display
+    const appId = props.id
+    setOpenApps("apps", (w) => w.id === appId, "display", currentDisplay === "maximized" ? "default" : "maximized")
   }
 
   const handleMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return
     e.preventDefault()
-    const currentPos = props.position[0]()
+    const currentPos = props.position
     setDragStart({
       mouseX: e.clientX,
       mouseY: e.clientY,
@@ -58,25 +63,79 @@ export const Window = (props: WindowProps) => {
       windowY: currentPos.y,
     })
     setIsDragging(true)
-    bringToFront(props.app.id)
+    bringToFront(props)
+  }
+
+  const handleResizeMouseDown = (e: MouseEvent, handle: string) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const currentPos = props.position
+    const currentSize = props.size
+
+    setResizeStart({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      windowX: currentPos.x,
+      windowY: currentPos.y,
+      width: currentSize.width,
+      height: currentSize.height,
+      handle,
+    })
+    setIsResizing(true)
+    bringToFront(props)
   }
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging() || !dragStart()) return
+    if (isDragging() && dragStart()) {
+      const start = dragStart()!
+      const deltaX = e.clientX - start.mouseX
+      const deltaY = e.clientY - start.mouseY
+      const appId = props.id
 
-    const start = dragStart()!
-    const deltaX = e.clientX - start.mouseX
-    const deltaY = e.clientY - start.mouseY
+      setOpenApps("apps", (w) => w.id === appId, "position", {
+        x: start.windowX + deltaX,
+        y: start.windowY + deltaY,
+      })
+    } else if (isResizing() && resizeStart()) {
+      const start = resizeStart()!
+      const deltaX = e.clientX - start.mouseX
+      const deltaY = e.clientY - start.mouseY
+      const appId = props.id
 
-    props.position[1]({
-      x: start.windowX + deltaX,
-      y: start.windowY + deltaY,
-    })
+      let newX = start.windowX
+      let newY = start.windowY
+      let newWidth = start.width
+      let newHeight = start.height
+
+      if (start.handle.includes("top")) {
+        newHeight = Math.max(MIN_HEIGHT, start.height - deltaY)
+        newY = start.windowY + (start.height - newHeight)
+      }
+      if (start.handle.includes("bottom")) {
+        newHeight = Math.max(MIN_HEIGHT, start.height + deltaY)
+      }
+      if (start.handle.includes("left")) {
+        newWidth = Math.max(MIN_WIDTH, start.width - deltaX)
+        newX = start.windowX + (start.width - newWidth)
+      }
+      if (start.handle.includes("right")) {
+        newWidth = Math.max(MIN_WIDTH, start.width + deltaX)
+      }
+
+      setOpenApps("apps", (w) => w.id === appId, {
+        position: { x: newX, y: newY },
+        size: { width: newWidth, height: newHeight },
+      })
+    }
   }
 
   const handleMouseUp = () => {
     setIsDragging(false)
     setDragStart(null)
+    setIsResizing(false)
+    setResizeStart(null)
   }
 
   onMount(() => {
@@ -90,13 +149,17 @@ export const Window = (props: WindowProps) => {
 
   return (
     <div
-      class="grid-rows[auto_1fr] absolute grid rounded-xl border-2 border-white/10 bg-black/25 backdrop-blur-3xl"
+      class={`grid-rows[auto_1fr] absolute border-2 bg-black/25 backdrop-blur-3xl ${
+        props.display === "minimized" ? "hidden" : "grid"
+      } ${
+        isFocused(props.id) ? "border-white/20 shadow-2xl shadow-black/50" : "border-white/10 shadow-lg"
+      } ${props.display !== "default" ? "rounded-none" : "rounded-xl"}`}
       style={{
-        top: `${props.position[0]().y}px`,
-        left: `${props.position[0]().x}px`,
-        width: `${props.size[0]().width}px`,
-        height: `${props.size[0]().height}px`,
-        "z-index": `${getZIndex(props.app.id)}`,
+        top: `${props.display === "maximized" ? 0 : props.position.y}px`,
+        left: `${props.display === "maximized" ? 0 : props.position.x}px`,
+        width: `${props.display === "maximized" ? window.innerWidth : props.size.width}px`,
+        height: `${props.display === "maximized" ? window.innerHeight : props.size.height}px`,
+        "z-index": `${props.display === "maximized" ? 1000 : getZIndex(props.id)}`,
       }}
     >
       <div
@@ -104,7 +167,7 @@ export const Window = (props: WindowProps) => {
         onMouseDown={handleMouseDown}
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
-          <h3 class="truncate text-sm font-medium text-white">
+          <h3 class="ml-1 truncate text-xs tracking-wide text-white select-none">
             {typeof props.app.name === "string" ? props.app.name : props.app.name[0]()}
           </h3>
         </div>
@@ -119,9 +182,9 @@ export const Window = (props: WindowProps) => {
           <button
             onClick={handleMaximize}
             class="inline-flex size-5 cursor-pointer items-center justify-center rounded border border-green-500/50 bg-green-500/10 hover:bg-green-500/20"
-            title={props.display[0]() === "maximized" ? "Restore" : "Maximize"}
+            title={props.display === "maximized" ? "Restore" : "Maximize"}
           >
-            {props.display[0]() === "maximized" ? (
+            {props.display === "maximized" ? (
               <Maximize2Icon class="size-3 text-white" />
             ) : (
               <SquareIcon class="size-3 text-white" />
@@ -138,17 +201,49 @@ export const Window = (props: WindowProps) => {
       </div>
       <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
 
-      {/* Red edge handles - full edges */}
-      <div data-handle="top" class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize" />
-      <div data-handle="bottom" class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize" />
-      <div data-handle="left" class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize" />
-      <div data-handle="right" class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize" />
+      {/* Edges */}
+      <div
+        data-handle="top"
+        class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "top")}
+      />
+      <div
+        data-handle="bottom"
+        class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
+      />
+      <div
+        data-handle="left"
+        class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "left")}
+      />
+      <div
+        data-handle="right"
+        class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "right")}
+      />
 
-      {/* Blue corner handles */}
-      <div data-handle="top-left" class="absolute -top-2 -left-2 size-3 cursor-nwse-resize" />
-      <div data-handle="top-right" class="absolute -top-2 -right-2 size-3 cursor-nesw-resize" />
-      <div data-handle="bottom-left" class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize" />
-      <div data-handle="bottom-right" class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize" />
+      {/* Corners */}
+      <div
+        data-handle="top-left"
+        class="absolute -top-2 -left-2 size-3 cursor-nwse-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
+      />
+      <div
+        data-handle="top-right"
+        class="absolute -top-2 -right-2 size-3 cursor-nesw-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
+      />
+      <div
+        data-handle="bottom-left"
+        class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
+      />
+      <div
+        data-handle="bottom-right"
+        class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize"
+        onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
+      />
     </div>
   )
 }

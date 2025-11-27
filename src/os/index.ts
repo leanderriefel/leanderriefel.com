@@ -34,7 +34,21 @@ export abstract class App {
   }
 }
 
-type AppClass = {
+export interface OsWindow {
+  id: string
+  app: App
+  position: {
+    x: number
+    y: number
+  }
+  size: {
+    width: number
+    height: number
+  }
+  display: "default" | "minimized" | "maximized"
+}
+
+export type AppClass = {
   new (): App
   appName: string
   appIcon: string

@@ -1,41 +1,111 @@
-import { createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
-import { App } from "~/os"
-import { WindowProps } from "~/os/windows/window-manager"
+import { App, OsWindow, appRegistry, AppClass } from "~/os"
 import { getValue } from "../utils/index"
+import { focus, removeFromStack, Focusable } from "~/os/focus"
+import { createEffect, createRoot } from "solid-js"
+
+const STORAGE_KEY = "os_windows_state"
 
 export const [openApps, setOpenApps] = createStore<{
-  apps: Array<WindowProps>
+  apps: Array<OsWindow>
 }>({ apps: [] })
 
-export const openApp = (app: App) => {
-  setOpenApps("apps", openApps.apps.length, {
-    app,
-    // eslint-disable-next-line solid/reactivity
-    display: createSignal<"default" | "minimized" | "maximized" | "fullscreen">("default"),
-    // eslint-disable-next-line solid/reactivity
-    position: createSignal({ x: 100, y: 100 }),
-    // eslint-disable-next-line solid/reactivity
-    size: createSignal(app.defaultSize ? getValue(app.defaultSize) : { width: 500, height: 500 }),
-  })
-
-  bringToFront(app.id)
+interface SavedWindow {
+  id: string
+  appName: string
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+  display: "default" | "minimized" | "maximized"
 }
+
+export const initWindowPersistence = () => {
+  if (typeof window === "undefined") return
+
+  // Load state
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const savedWindows: SavedWindow[] = JSON.parse(saved)
+      const windows: OsWindow[] = []
+
+      savedWindows.forEach((savedWin) => {
+        const AppClass = appRegistry.find((a) => a.appName === savedWin.appName)
+        if (AppClass) {
+          const app = new AppClass()
+          app.id = savedWin.id // Restore ID to keep consistency
+
+          windows.push({
+            id: savedWin.id,
+            app,
+            display: savedWin.display,
+            position: savedWin.position,
+            size: savedWin.size,
+          })
+        }
+      })
+
+      if (windows.length > 0) {
+        setOpenApps("apps", windows)
+        // Re-initialize focus stack or other state if necessary
+        // For now, just ensure they are in the store
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load window state", e)
+  }
+
+  // Save state effect
+  createRoot(() => {
+    createEffect(() => {
+      const stateToSave: SavedWindow[] = openApps.apps.map((w) => ({
+        id: w.id,
+        appName: (w.app.constructor as AppClass).appName,
+        position: w.position,
+        size: w.size,
+        display: w.display,
+      }))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave))
+    })
+  })
+}
+
+export const openApp = (app: App) => {
+  const newWindow: OsWindow = {
+    id: app.id,
+    app,
+    display: "default",
+    position: { x: 100, y: 100 },
+    size: app.defaultSize ? getValue(app.defaultSize) : { width: 500, height: 500 },
+  }
+
+  setOpenApps("apps", openApps.apps.length, newWindow)
+
+  focus(newWindow)
+}
+
+export const getWindow = (id: string) => openApps.apps.find((w) => w.id === id)
 
 export const closeApp = (app: App | string) => {
   const appId = typeof app === "string" ? app : app.id
-  setOpenApps("apps", (apps) => apps.filter((app) => app.app.id !== appId))
+  setOpenApps("apps", (apps) => apps.filter((w) => w.id !== appId))
+  removeFromStack(appId)
 }
 
-export const [zIndexStack, setZIndexStack] = createStore<{
-  stack: Array<string>
-}>({ stack: [] })
-
-export const bringToFront = (appId: string) => {
-  setZIndexStack("stack", (stack) => {
-    const filtered = stack.filter((id) => id !== appId)
-    return [...filtered, appId]
-  })
+export const minimizeApp = (app: App | string) => {
+  const appId = typeof app === "string" ? app : app.id
+  setOpenApps("apps", (w) => w.id === appId, "display", "minimized")
+  removeFromStack(appId)
 }
 
-export const getZIndex = (appId: string) => zIndexStack.stack.indexOf(appId) + 1
+export { getZIndex } from "~/os/focus"
+
+export const bringToFront = (item: Focusable) => {
+  const id = typeof item === "string" ? item : item.id
+  setOpenApps(
+    "apps",
+    (w) => w.id === id,
+    "display",
+    (d) => (d === "minimized" ? "default" : d),
+  )
+  focus(item)
+}
