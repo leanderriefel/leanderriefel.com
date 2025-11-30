@@ -1,6 +1,6 @@
 import { createStore } from "solid-js/store"
 import { App, OsWindow, appRegistry, AppClass } from "~/os"
-import { getValue } from "../utils/index"
+import { getValue, constrainToViewport } from "../utils/index"
 import { focus, removeFromStack, Focusable } from "~/os/focus"
 import { createEffect, createRoot } from "solid-js"
 
@@ -34,12 +34,14 @@ export const initWindowPersistence = () => {
           const app = new AppClass()
           app.id = savedWin.id // Restore ID to keep consistency
 
+          const { position, size } = constrainToViewport(savedWin.position, savedWin.size)
+
           windows.push({
             id: savedWin.id,
             app,
             display: savedWin.display,
-            position: savedWin.position,
-            size: savedWin.size,
+            position,
+            size,
           })
         }
       })
@@ -70,12 +72,21 @@ export const initWindowPersistence = () => {
 }
 
 export const openApp = (app: App) => {
+  let position = { x: 100, y: 100 }
+  let size = app.defaultSize ? getValue(app.defaultSize) : { width: 500, height: 500 }
+
+  if (typeof window !== "undefined") {
+    const constrained = constrainToViewport(position, size)
+    position = constrained.position
+    size = constrained.size
+  }
+
   const newWindow: OsWindow = {
     id: app.id,
     app,
     display: "default",
-    position: { x: 100, y: 100 },
-    size: app.defaultSize ? getValue(app.defaultSize) : { width: 500, height: 500 },
+    position,
+    size,
   }
 
   setOpenApps("apps", openApps.apps.length, newWindow)

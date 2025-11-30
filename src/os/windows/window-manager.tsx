@@ -1,13 +1,49 @@
-import { XIcon, MinusIcon, SquareIcon, Maximize2Icon } from "lucide-solid"
+import { XIcon, MinusIcon, SquareIcon, Maximize2Icon, CopyIcon } from "lucide-solid"
 import { For, createSignal, onCleanup, onMount } from "solid-js"
-import { OsWindow } from "~/os"
-import { bringToFront, closeApp, getZIndex, minimizeApp, openApps, setOpenApps } from "~/os/windows/open-windows"
+import { OsWindow, createAppInstance } from "~/os"
+import {
+  bringToFront,
+  closeApp,
+  getZIndex,
+  minimizeApp,
+  openApp,
+  openApps,
+  setOpenApps,
+} from "~/os/windows/open-windows"
+import { constrainToViewport } from "~/os/utils"
 import { isFocused } from "~/os/focus"
+import { IconButton, Tooltip } from "~/components/core"
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuLabel,
+} from "~/components/core"
 
 const MIN_WIDTH = 200
 const MIN_HEIGHT = 100
 
 export const WindowManager = () => {
+  onMount(() => {
+    const handleResize = () => {
+      openApps.apps.forEach((app) => {
+        const { position, size } = constrainToViewport(app.position, app.size)
+        if (
+          position.x !== app.position.x ||
+          position.y !== app.position.y ||
+          size.width !== app.size.width ||
+          size.height !== app.size.height
+        ) {
+          setOpenApps("apps", (w) => w.id === app.id, { position, size })
+        }
+      })
+    }
+    window.addEventListener("resize", handleResize)
+    onCleanup(() => window.removeEventListener("resize", handleResize))
+  })
+
   return <For each={openApps.apps}>{(props) => <Window {...props} />}</For>
 }
 
@@ -31,25 +67,30 @@ export const Window = (props: OsWindow) => {
     handle: string
   } | null>(null)
 
-  const handleClose = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleClose = (e?: MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     closeApp(props.id)
   }
 
-  const handleMinimize = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleMinimize = (e?: MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const appId = props.id
     minimizeApp(appId)
   }
 
-  const handleMaximize = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleMaximize = (e?: MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     const currentDisplay = props.display
     const appId = props.id
     setOpenApps("apps", (w) => w.id === appId, "display", currentDisplay === "maximized" ? "default" : "maximized")
+  }
+
+  const handleDuplicate = () => {
+    const AppClass = props.app.constructor as new () => typeof props.app
+    openApp(createAppInstance(AppClass as Parameters<typeof createAppInstance>[0]))
   }
 
   const handleMouseDown = (e: MouseEvent) => {
@@ -94,9 +135,14 @@ export const Window = (props: OsWindow) => {
       const deltaY = e.clientY - start.mouseY
       const appId = props.id
 
+      const newX = start.windowX + deltaX
+      const newY = start.windowY + deltaY
+      const maxX = window.innerWidth - props.size.width
+      const maxY = window.innerHeight - props.size.height
+
       setOpenApps("apps", (w) => w.id === appId, "position", {
-        x: start.windowX + deltaX,
-        y: start.windowY + deltaY,
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY)),
       })
     } else if (isResizing() && resizeStart()) {
       const start = resizeStart()!
@@ -124,6 +170,22 @@ export const Window = (props: OsWindow) => {
         newWidth = Math.max(MIN_WIDTH, start.width + deltaX)
       }
 
+      // Bounds checking
+      if (newX < 0) {
+        newWidth += newX
+        newX = 0
+      }
+      if (newY < 0) {
+        newHeight += newY
+        newY = 0
+      }
+      if (newX + newWidth > window.innerWidth) {
+        newWidth = window.innerWidth - newX
+      }
+      if (newY + newHeight > window.innerHeight) {
+        newHeight = window.innerHeight - newY
+      }
+
       setOpenApps("apps", (w) => w.id === appId, {
         position: { x: newX, y: newY },
         size: { width: newWidth, height: newHeight },
@@ -147,103 +209,140 @@ export const Window = (props: OsWindow) => {
     })
   })
 
+  const windowName = () => (typeof props.app.name === "string" ? props.app.name : props.app.name[0]())
+
   return (
-    <div
-      class={`grid-rows[auto_1fr] absolute border-2 bg-black/25 backdrop-blur-3xl ${
-        props.display === "minimized" ? "hidden" : "grid"
-      } ${
-        isFocused(props.id) ? "border-white/20 shadow-2xl shadow-black/50" : "border-white/10 shadow-lg"
-      } ${props.display !== "default" ? "rounded-none" : "rounded-xl"}`}
-      style={{
-        top: `${props.display === "maximized" ? 0 : props.position.y}px`,
-        left: `${props.display === "maximized" ? 0 : props.position.x}px`,
-        width: `${props.display === "maximized" ? window.innerWidth : props.size.width}px`,
-        height: `${props.display === "maximized" ? window.innerHeight : props.size.height}px`,
-        "z-index": `${props.display === "maximized" ? 1000 : getZIndex(props.id)}`,
-      }}
-    >
-      <div
-        class="flex h-8 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl bg-black/50 px-2"
-        onMouseDown={handleMouseDown}
-      >
-        <div class="flex min-w-0 flex-1 items-center gap-2">
-          <h3 class="ml-1 truncate text-xs tracking-wide text-white select-none">
-            {typeof props.app.name === "string" ? props.app.name : props.app.name[0]()}
-          </h3>
-        </div>
-        <div class="flex shrink-0 items-center gap-1">
-          <button
-            onClick={handleMinimize}
-            class="inline-flex size-5 cursor-pointer items-center justify-center rounded border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20"
-            title="Minimize"
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          class={`grid-rows[auto_1fr] absolute border bg-background/25 backdrop-blur-2xl ${
+            props.display === "minimized" ? "hidden" : "grid"
+          } ${
+            isFocused(props.id) ? "border-border shadow-xl" : "border-border/50 shadow-md"
+          } ${props.display !== "default" ? "rounded-none" : "rounded-2xl"}`}
+          style={{
+            top: `${props.display === "maximized" ? 0 : props.position.y}px`,
+            left: `${props.display === "maximized" ? 0 : props.position.x}px`,
+            width: `${props.display === "maximized" ? window.innerWidth : props.size.width}px`,
+            height: `${props.display === "maximized" ? window.innerHeight : props.size.height}px`,
+            "z-index": `${props.display === "maximized" ? 1000 : getZIndex(props.id)}`,
+          }}
+          onMouseDown={() => bringToFront(props)}
+        >
+          <div
+            class="flex h-8 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl bg-muted/50"
+            onMouseDown={handleMouseDown}
           >
-            <MinusIcon class="size-3 text-white" />
-          </button>
-          <button
-            onClick={handleMaximize}
-            class="inline-flex size-5 cursor-pointer items-center justify-center rounded border border-green-500/50 bg-green-500/10 hover:bg-green-500/20"
-            title={props.display === "maximized" ? "Restore" : "Maximize"}
-          >
-            {props.display === "maximized" ? (
-              <Maximize2Icon class="size-3 text-white" />
-            ) : (
-              <SquareIcon class="size-3 text-white" />
-            )}
-          </button>
-          <button
-            onClick={handleClose}
-            class="inline-flex size-5 cursor-pointer items-center justify-center rounded border border-red-500/50 bg-red-500/10 hover:bg-red-500/20"
-            title="Close"
-          >
-            <XIcon class="size-3 text-white" />
-          </button>
-        </div>
-      </div>
-      <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
+            <div class="flex min-w-0 flex-1 items-center gap-2 px-2">
+              <h3 class="ml-1 truncate text-xs tracking-wide text-foreground select-none">{windowName()}</h3>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <Tooltip content="Minimize" side="bottom" delayDuration={500}>
+                <IconButton
+                  icon={<MinusIcon class="size-3" />}
+                  aria-label="Minimize"
+                  variant="warning"
+                  size="icon-sm"
+                  class="my-1 ml-1 size-6 rounded-md"
+                  onClick={handleMinimize}
+                />
+              </Tooltip>
+              <Tooltip
+                content={props.display === "maximized" ? "Restore" : "Maximize"}
+                side="bottom"
+                delayDuration={500}
+              >
+                <IconButton
+                  icon={
+                    props.display === "maximized" ? <Maximize2Icon class="size-3" /> : <SquareIcon class="size-3" />
+                  }
+                  aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
+                  variant="success"
+                  size="icon-sm"
+                  class="my-1 size-6 rounded-md"
+                  onClick={handleMaximize}
+                />
+              </Tooltip>
+              <Tooltip content="Close" side="bottom" delayDuration={500}>
+                <IconButton
+                  icon={<XIcon class="size-3" />}
+                  aria-label="Close"
+                  variant="destructive"
+                  size="icon-sm"
+                  class="my-1 mr-1 size-6 rounded-md"
+                  onClick={handleClose}
+                />
+              </Tooltip>
+            </div>
+          </div>
+          <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
 
-      {/* Edges */}
-      <div
-        data-handle="top"
-        class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "top")}
-      />
-      <div
-        data-handle="bottom"
-        class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
-      />
-      <div
-        data-handle="left"
-        class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "left")}
-      />
-      <div
-        data-handle="right"
-        class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "right")}
-      />
+          {/* Edges */}
+          <div
+            data-handle="top"
+            class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "top")}
+          />
+          <div
+            data-handle="bottom"
+            class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
+          />
+          <div
+            data-handle="left"
+            class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "left")}
+          />
+          <div
+            data-handle="right"
+            class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "right")}
+          />
 
-      {/* Corners */}
-      <div
-        data-handle="top-left"
-        class="absolute -top-2 -left-2 size-3 cursor-nwse-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
-      />
-      <div
-        data-handle="top-right"
-        class="absolute -top-2 -right-2 size-3 cursor-nesw-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
-      />
-      <div
-        data-handle="bottom-left"
-        class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
-      />
-      <div
-        data-handle="bottom-right"
-        class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize"
-        onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
-      />
-    </div>
+          {/* Corners */}
+          <div
+            data-handle="top-left"
+            class="absolute -top-2 -left-2 size-3 cursor-nwse-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
+          />
+          <div
+            data-handle="top-right"
+            class="absolute -top-2 -right-2 size-3 cursor-nesw-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
+          />
+          <div
+            data-handle="bottom-left"
+            class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
+          />
+          <div
+            data-handle="bottom-right"
+            class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize"
+            onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
+          />
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent>
+        <ContextMenuLabel>{windowName()}</ContextMenuLabel>
+        <ContextMenuSeparator />
+        <ContextMenuItem icon={<MinusIcon class="size-4" />} onSelect={handleMinimize}>
+          Minimize
+        </ContextMenuItem>
+        <ContextMenuItem
+          icon={props.display === "maximized" ? <Maximize2Icon class="size-4" /> : <SquareIcon class="size-4" />}
+          onSelect={handleMaximize}
+        >
+          {props.display === "maximized" ? "Restore" : "Maximize"}
+        </ContextMenuItem>
+        <ContextMenuItem icon={<CopyIcon class="size-4" />} onSelect={handleDuplicate}>
+          Duplicate Window
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem icon={<XIcon class="size-4" />} variant="destructive" onSelect={handleClose}>
+          Close
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
