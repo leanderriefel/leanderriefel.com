@@ -6,10 +6,8 @@ import { TaskbarButton, TaskbarButtons } from "~/components/taskbar/taskbar-butt
 export default function Home() {
   return (
     <div class="relative h-screen w-screen overflow-hidden bg-background selection:bg-primary/20">
-      {/* Subtle grid pattern */}
-      <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] bg-size-[4rem_4rem] opacity-20" />
+      <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] bg-size-[4rem_4rem] opacity-50" />
 
-      {/* Layered gradients add depth without glow orbs */}
       <div class="pointer-events-none absolute inset-0">
         <div class="absolute inset-0 bg-linear-to-b from-background/60 via-background/80 to-background/90 opacity-90" />
         <div class="from-background/95/40 to-background/95/40 absolute inset-0 bg-linear-to-r via-transparent opacity-70 mix-blend-soft-light" />

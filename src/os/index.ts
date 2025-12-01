@@ -60,10 +60,28 @@ export type AppClass = {
   }
 }
 
-export const appRegistry: Array<AppClass> = []
+type GlobalWithAppRegistry = typeof globalThis & {
+  __osAppRegistry?: Array<AppClass>
+}
+
+const getGlobalAppRegistry = () => {
+  const globalObject = globalThis as GlobalWithAppRegistry
+  if (!globalObject.__osAppRegistry) {
+    globalObject.__osAppRegistry = []
+  }
+  return globalObject.__osAppRegistry
+}
+
+export const appRegistry: Array<AppClass> = getGlobalAppRegistry()
 
 export const registerApp = (AppClass: AppClass) => {
-  if (appRegistry.some((app) => app === AppClass)) return
+  const existingIndex = appRegistry.findIndex((app) => app === AppClass || app.appName === AppClass.appName)
+
+  if (existingIndex !== -1) {
+    appRegistry[existingIndex] = AppClass
+    return
+  }
+
   appRegistry.push(AppClass)
 }
 

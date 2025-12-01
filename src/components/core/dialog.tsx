@@ -1,75 +1,17 @@
 import {
-  createSignal,
-  createContext,
-  useContext,
-  ParentProps,
-  Show,
-  onMount,
-  onCleanup,
-  Accessor,
-  Setter,
-} from "solid-js"
+  Dialog as DialogPrimitive,
+  type DialogCloseButtonProps as DialogPrimitiveCloseButtonProps,
+  type DialogContentProps as DialogPrimitiveContentProps,
+  type DialogDescriptionProps as DialogPrimitiveDescriptionProps,
+  type DialogRootProps as DialogPrimitiveRootProps,
+  type DialogTitleProps as DialogPrimitiveTitleProps,
+  type DialogTriggerProps as DialogPrimitiveTriggerProps,
+} from "@kobalte/core/dialog"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Portal } from "./portal"
+import { splitProps, type ParentProps } from "solid-js"
 import { cn } from "~/os/utils"
 import { XIcon } from "lucide-solid"
 
-// Dialog Context
-interface DialogContextValue {
-  isOpen: Accessor<boolean>
-  setIsOpen: Setter<boolean>
-  close: () => void
-  titleId: string
-  descriptionId: string
-}
-
-const DialogContext = createContext<DialogContextValue | null>(null)
-
-export interface DialogProps extends ParentProps {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  defaultOpen?: boolean
-  modal?: boolean
-}
-
-export const Dialog = (props: DialogProps) => {
-  const [internalOpen, setInternalOpen] = createSignal(props.defaultOpen ?? false)
-  const titleId = `dialog-title-${Math.random().toString(36).slice(2)}`
-  const descriptionId = `dialog-description-${Math.random().toString(36).slice(2)}`
-
-  const isOpen = () => props.open ?? internalOpen()
-  const setIsOpen = (value: boolean | ((prev: boolean) => boolean)) => {
-    const newValue = typeof value === "function" ? value(isOpen()) : value
-    setInternalOpen(newValue)
-    props.onOpenChange?.(newValue)
-  }
-
-  const close = () => setIsOpen(false)
-
-  return (
-    <DialogContext.Provider value={{ isOpen, setIsOpen: setIsOpen as Setter<boolean>, close, titleId, descriptionId }}>
-      {props.children}
-    </DialogContext.Provider>
-  )
-}
-
-// Dialog Trigger
-export interface DialogTriggerProps extends ParentProps {
-  class?: string
-  asChild?: boolean
-}
-
-export const DialogTrigger = (props: DialogTriggerProps) => {
-  const context = useContext(DialogContext)
-
-  return (
-    <button class={cn("inline-flex", props.class)} onClick={() => context?.setIsOpen(true)}>
-      {props.children}
-    </button>
-  )
-}
-
-// Dialog Content Variants
 const dialogContentVariants = cva(
   "fixed z-9999 flex flex-col overflow-hidden shadow-2xl animate-in fade-in-0 zoom-in-95",
   {
@@ -95,155 +37,127 @@ const dialogContentVariants = cva(
   },
 )
 
-export interface DialogContentProps extends ParentProps, VariantProps<typeof dialogContentVariants> {
-  class?: string
-  showClose?: boolean
-  onEscapeKeyDown?: (e: KeyboardEvent) => void
-  onPointerDownOutside?: (e: MouseEvent) => void
+export type DialogProps = DialogPrimitiveRootProps
+
+export const Dialog = (props: DialogProps) => {
+  return <DialogPrimitive {...props} />
 }
 
-export const DialogContent = (props: DialogContentProps) => {
-  const context = useContext(DialogContext)
-  const [contentRef, setContentRef] = createSignal<HTMLElement | null>(null)
+export type DialogTriggerProps = ParentProps<Omit<DialogPrimitiveTriggerProps, "class">> & {
+  class?: string
+}
 
-  const handleEscape = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      props.onEscapeKeyDown?.(e)
-      if (!e.defaultPrevented) {
-        context?.close()
-      }
-    }
-  }
-
-  const handleClickOutside = (e: MouseEvent) => {
-    const content = contentRef()
-    if (content && !content.contains(e.target as Node)) {
-      props.onPointerDownOutside?.(e)
-      if (!e.defaultPrevented) {
-        context?.close()
-      }
-    }
-  }
-
-  onMount(() => {
-    document.addEventListener("keydown", handleEscape)
-  })
-
-  onCleanup(() => {
-    document.removeEventListener("keydown", handleEscape)
-  })
+export const DialogTrigger = (props: DialogTriggerProps) => {
+  const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <Show when={context?.isOpen()}>
-      <Portal>
-        {/* Overlay */}
-        <div
-          class="animate-in fade-in-0 fixed inset-0 z-9998 bg-black/60 backdrop-blur-sm"
-          onClick={handleClickOutside}
-        />
-        {/* Content */}
-        <div
-          ref={setContentRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={context?.titleId}
-          aria-describedby={context?.descriptionId}
-          class={cn(
-            dialogContentVariants({ variant: props.variant, size: props.size }),
-            "top-1/2 left-1/2 w-full -translate-x-1/2 -translate-y-1/2",
-            props.class,
-          )}
-        >
-          {props.children}
-          <Show when={props.showClose !== false}>
-            <button
-              class="absolute top-3 right-3 flex size-7 cursor-pointer items-center justify-center rounded-lg border border-border bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              onClick={() => context?.close()}
-            >
-              <XIcon class="size-4" />
-            </button>
-          </Show>
-        </div>
-      </Portal>
-    </Show>
+    <DialogPrimitive.Trigger class={cn("inline-flex", local.class)} {...rest}>
+      {local.children}
+    </DialogPrimitive.Trigger>
   )
 }
 
-// Dialog Header
+export type DialogContentProps = ParentProps<Omit<DialogPrimitiveContentProps, "class">> &
+  VariantProps<typeof dialogContentVariants> & {
+    class?: string
+    showClose?: boolean
+  }
+
+export const DialogContent = (props: DialogContentProps) => {
+  const [local, rest] = splitProps(props, ["children", "class", "variant", "size", "showClose"])
+
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay class="animate-in fade-in-0 fixed inset-0 z-9998 bg-black/60 backdrop-blur-sm" />
+      <DialogPrimitive.Content
+        class={cn(
+          dialogContentVariants({ variant: local.variant, size: local.size }),
+          "top-1/2 left-1/2 w-full -translate-x-1/2 -translate-y-1/2",
+          local.class,
+        )}
+        {...rest}
+      >
+        {local.children}
+        {local.showClose !== false && (
+          <DialogPrimitive.CloseButton class="absolute top-3 right-3 flex size-7 cursor-pointer items-center justify-center rounded-lg border border-border bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+            <XIcon class="size-4" />
+          </DialogPrimitive.CloseButton>
+        )}
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  )
+}
+
 export interface DialogHeaderProps extends ParentProps {
   class?: string
 }
 
 export const DialogHeader = (props: DialogHeaderProps) => {
-  return <div class={cn("flex flex-col gap-1.5 border-b border-border px-5 py-4", props.class)}>{props.children}</div>
+  const [local] = splitProps(props, ["children", "class"])
+  return <div class={cn("flex flex-col gap-1.5 border-b border-border px-5 py-4", local.class)}>{local.children}</div>
 }
 
-// Dialog Title
-export interface DialogTitleProps extends ParentProps {
+export type DialogTitleProps = ParentProps<Omit<DialogPrimitiveTitleProps, "class">> & {
   class?: string
 }
 
 export const DialogTitle = (props: DialogTitleProps) => {
-  const context = useContext(DialogContext)
+  const [local] = splitProps(props, ["children", "class"])
   return (
-    <h2 id={context?.titleId} class={cn("text-base font-semibold text-foreground", props.class)}>
-      {props.children}
-    </h2>
+    <DialogPrimitive.Title class={cn("text-base font-semibold text-foreground", local.class)}>
+      {local.children}
+    </DialogPrimitive.Title>
   )
 }
 
-// Dialog Description
-export interface DialogDescriptionProps extends ParentProps {
+export type DialogDescriptionProps = ParentProps<Omit<DialogPrimitiveDescriptionProps, "class">> & {
   class?: string
 }
 
 export const DialogDescription = (props: DialogDescriptionProps) => {
-  const context = useContext(DialogContext)
+  const [local] = splitProps(props, ["children", "class"])
   return (
-    <p id={context?.descriptionId} class={cn("text-sm text-muted-foreground", props.class)}>
-      {props.children}
-    </p>
+    <DialogPrimitive.Description class={cn("text-sm text-muted-foreground", local.class)}>
+      {local.children}
+    </DialogPrimitive.Description>
   )
 }
 
-// Dialog Body
 export interface DialogBodyProps extends ParentProps {
   class?: string
 }
 
 export const DialogBody = (props: DialogBodyProps) => {
-  return <div class={cn("flex-1 overflow-auto px-5 py-4", props.class)}>{props.children}</div>
+  const [local] = splitProps(props, ["children", "class"])
+  return <div class={cn("flex-1 overflow-auto px-5 py-4", local.class)}>{local.children}</div>
 }
 
-// Dialog Footer
 export interface DialogFooterProps extends ParentProps {
   class?: string
 }
 
 export const DialogFooter = (props: DialogFooterProps) => {
+  const [local] = splitProps(props, ["children", "class"])
   return (
-    <div class={cn("flex items-center justify-end gap-2 border-t border-border px-5 py-3", props.class)}>
-      {props.children}
+    <div class={cn("flex items-center justify-end gap-2 border-t border-border px-5 py-3", local.class)}>
+      {local.children}
     </div>
   )
 }
 
-// Dialog Close (renders children with close functionality)
-export interface DialogCloseProps extends ParentProps {
+export type DialogCloseProps = ParentProps<Omit<DialogPrimitiveCloseButtonProps, "class">> & {
   class?: string
 }
 
 export const DialogClose = (props: DialogCloseProps) => {
-  const context = useContext(DialogContext)
-
+  const [local, rest] = splitProps(props, ["children", "class"])
   return (
-    <button class={cn("inline-flex", props.class)} onClick={() => context?.close()}>
-      {props.children}
-    </button>
+    <DialogPrimitive.CloseButton class={cn("inline-flex", local.class)} {...rest}>
+      {local.children}
+    </DialogPrimitive.CloseButton>
   )
 }
 
-// Alert Dialog (Specialized confirmation dialog)
 export interface AlertDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -262,9 +176,7 @@ export const AlertDialog = (props: AlertDialogProps) => {
       <DialogContent size="sm" showClose={false}>
         <DialogHeader>
           <DialogTitle>{props.title}</DialogTitle>
-          <Show when={props.description}>
-            <DialogDescription>{props.description}</DialogDescription>
-          </Show>
+          {props.description && <DialogDescription>{props.description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
           <button

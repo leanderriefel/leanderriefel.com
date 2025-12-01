@@ -69,7 +69,7 @@ export class TestApp extends App {
           <Badge variant="destructive">Destructive</Badge>
         </div>
 
-        <Separator variant="gradient" />
+        <Separator />
 
         <Show when={isVisible()}>
           <Card>

@@ -1,4 +1,6 @@
+import { Switch as SwitchPrimitive, type SwitchRootProps as SwitchPrimitiveRootProps } from "@kobalte/core/switch"
 import { cva, type VariantProps } from "class-variance-authority"
+import { splitProps } from "solid-js"
 import { cn } from "~/os/utils"
 
 const switchVariants = cva(
@@ -33,41 +35,52 @@ const thumbVariants = cva(
   },
 )
 
-export interface SwitchProps extends VariantProps<typeof switchVariants> {
-  checked?: boolean
-  onCheckedChange?: (checked: boolean) => void
-  disabled?: boolean
+const thumbTranslate: Record<NonNullable<VariantProps<typeof switchVariants>["size"]>, { on: string; off: string }> = {
+  sm: { on: "translateX(12px)", off: "translateX(2px)" },
+  md: { on: "translateX(18px)", off: "translateX(2px)" },
+  lg: { on: "translateX(22px)", off: "translateX(2px)" },
+}
+
+export interface SwitchProps
+  extends Omit<SwitchPrimitiveRootProps, "class" | "onChange">,
+    VariantProps<typeof switchVariants> {
   class?: string
+  onCheckedChange?: SwitchPrimitiveRootProps["onChange"]
 }
 
 export const Switch = (props: SwitchProps) => {
-  const size = () => props.size ?? "md"
+  const [local, rest] = splitProps(props, ["class", "size", "checked", "defaultChecked", "onCheckedChange", "disabled"])
+  const size = () => local.size ?? "md"
 
-  const getTranslateX = () => {
-    switch (size()) {
-      case "sm":
-        return props.checked ? "translateX(12px)" : "translateX(2px)"
-      case "lg":
-        return props.checked ? "translateX(22px)" : "translateX(2px)"
-      default:
-        return props.checked ? "translateX(18px)" : "translateX(2px)"
-    }
+  const translate = (checked: boolean) => {
+    const offsets = thumbTranslate[size()]
+    return checked ? offsets.on : offsets.off
   }
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={props.checked}
+    <SwitchPrimitive
+      checked={local.checked}
+      defaultChecked={local.defaultChecked}
+      onChange={local.onCheckedChange}
+      disabled={local.disabled}
       class={cn(
         switchVariants({ size: size() }),
-        props.checked ? "border-primary bg-primary" : "border-input bg-input",
-        props.class,
+        "border-input bg-input data-checked:border-primary data-checked:bg-primary",
+        local.class,
       )}
-      disabled={props.disabled}
-      onClick={() => props.onCheckedChange?.(!props.checked)}
+      {...rest}
     >
-      <span class={cn(thumbVariants({ size: size() }))} style={{ transform: getTranslateX() }} />
-    </button>
+      {(state) => (
+        <>
+          <SwitchPrimitive.Input class="sr-only" />
+          <SwitchPrimitive.Control class="flex h-full w-full items-center">
+            <SwitchPrimitive.Thumb
+              class={cn(thumbVariants({ size: size() }))}
+              style={{ transform: translate(state.checked()) }}
+            />
+          </SwitchPrimitive.Control>
+        </>
+      )}
+    </SwitchPrimitive>
   )
 }

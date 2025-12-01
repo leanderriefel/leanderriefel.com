@@ -213,22 +213,22 @@ export const Window = (props: OsWindow) => {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger>
-        <div
-          class={`grid-rows[auto_1fr] absolute border bg-background/25 backdrop-blur-2xl ${
-            props.display === "minimized" ? "hidden" : "grid"
-          } ${
-            isFocused(props.id) ? "border-border shadow-xl" : "border-border/50 shadow-md"
-          } ${props.display !== "default" ? "rounded-none" : "rounded-2xl"}`}
-          style={{
-            top: `${props.display === "maximized" ? 0 : props.position.y}px`,
-            left: `${props.display === "maximized" ? 0 : props.position.x}px`,
-            width: `${props.display === "maximized" ? window.innerWidth : props.size.width}px`,
-            height: `${props.display === "maximized" ? window.innerHeight : props.size.height}px`,
-            "z-index": `${props.display === "maximized" ? 1000 : getZIndex(props.id)}`,
-          }}
-          onMouseDown={() => bringToFront(props)}
-        >
+      <div
+        class={`grid-rows[auto_1fr] absolute border bg-background/25 backdrop-blur-2xl ${
+          props.display === "minimized" ? "hidden" : "grid"
+        } ${
+          isFocused(props.id) ? "border-border shadow-xl" : "border-border/50 shadow-md"
+        } ${props.display !== "default" ? "rounded-none" : "rounded-2xl"}`}
+        style={{
+          top: `${props.display === "maximized" ? 0 : props.position.y}px`,
+          left: `${props.display === "maximized" ? 0 : props.position.x}px`,
+          width: `${props.display === "maximized" ? window.innerWidth : props.size.width}px`,
+          height: `${props.display === "maximized" ? window.innerHeight : props.size.height}px`,
+          "z-index": `${props.display === "maximized" ? 1000 : getZIndex(props.id)}`,
+        }}
+        onMouseDown={() => bringToFront(props)}
+      >
+        <ContextMenuTrigger class="contents">
           <div
             class="flex h-8 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl bg-muted/50"
             onMouseDown={handleMouseDown}
@@ -275,53 +275,53 @@ export const Window = (props: OsWindow) => {
               </Tooltip>
             </div>
           </div>
-          <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
+        </ContextMenuTrigger>
+        <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
 
-          {/* Edges */}
-          <div
-            data-handle="top"
-            class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "top")}
-          />
-          <div
-            data-handle="bottom"
-            class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
-          />
-          <div
-            data-handle="left"
-            class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "left")}
-          />
-          <div
-            data-handle="right"
-            class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "right")}
-          />
+        {/* Edges */}
+        <div
+          data-handle="top"
+          class="absolute -top-2 right-2 left-2 h-2 cursor-ns-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "top")}
+        />
+        <div
+          data-handle="bottom"
+          class="absolute right-2 -bottom-2 left-2 h-2 cursor-ns-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
+        />
+        <div
+          data-handle="left"
+          class="absolute top-2 bottom-2 -left-2 w-2 cursor-ew-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "left")}
+        />
+        <div
+          data-handle="right"
+          class="absolute top-2 -right-2 bottom-2 w-2 cursor-ew-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "right")}
+        />
 
-          {/* Corners */}
-          <div
-            data-handle="top-left"
-            class="absolute -top-2 -left-2 size-3 cursor-nwse-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
-          />
-          <div
-            data-handle="top-right"
-            class="absolute -top-2 -right-2 size-3 cursor-nesw-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
-          />
-          <div
-            data-handle="bottom-left"
-            class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
-          />
-          <div
-            data-handle="bottom-right"
-            class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
-          />
-        </div>
-      </ContextMenuTrigger>
+        {/* Corners */}
+        <div
+          data-handle="top-left"
+          class="absolute -top-2 -left-2 size-3 cursor-nwse-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
+        />
+        <div
+          data-handle="top-right"
+          class="absolute -top-2 -right-2 size-3 cursor-nesw-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
+        />
+        <div
+          data-handle="bottom-left"
+          class="absolute -bottom-2 -left-2 size-3 cursor-nesw-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
+        />
+        <div
+          data-handle="bottom-right"
+          class="absolute -right-2 -bottom-2 size-3 cursor-nwse-resize"
+          onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
+        />
+      </div>
 
       <ContextMenuContent>
         <ContextMenuLabel>{windowName()}</ContextMenuLabel>

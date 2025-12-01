@@ -1,4 +1,4 @@
-import { JSX, onCleanup, onMount, createSignal, Show, ParentProps } from "solid-js"
+import { onMount, createSignal, Show, ParentProps } from "solid-js"
 import { Portal as SolidPortal } from "solid-js/web"
 
 export interface PortalProps extends ParentProps {
@@ -18,4 +18,3 @@ export const Portal = (props: PortalProps) => {
     </Show>
   )
 }
-
