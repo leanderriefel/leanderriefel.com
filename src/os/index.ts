@@ -1,7 +1,7 @@
 import { JSX, Signal } from "solid-js"
 
 export abstract class App {
-  id: string
+  abstract id: string
   abstract name: Signal<string> | string
   abstract icon: Signal<string> | string
   abstract render: () => JSX.Element
@@ -17,16 +17,14 @@ export abstract class App {
         height: number
       }
 
+  static appId: string
   static appName: string
   static appIcon: string
   static appColor?: string
 
-  constructor() {
-    this.id = crypto.randomUUID()
-  }
-
   static getMetadata() {
     return {
+      id: this.appId,
       name: this.appName,
       icon: this.appIcon,
       color: this.appColor,
@@ -50,10 +48,12 @@ export interface OsWindow {
 
 export type AppClass = {
   new (): App
+  appId: string
   appName: string
   appIcon: string
   appColor?: string
   getMetadata(): {
+    id: string
     name: string
     icon: string
     color?: string

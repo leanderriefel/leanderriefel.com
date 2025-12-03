@@ -27,10 +27,12 @@ import {
 import { PlusIcon, MinusIcon, EyeIcon, EyeOffIcon, SettingsIcon } from "lucide-solid"
 
 export class TestApp extends App {
+  static appId = "test"
   static appName = "Test"
   static appIcon = "test"
   static appColor = "red"
 
+  id = TestApp.appId
   name = TestApp.appName
   icon = TestApp.appIcon
   color = TestApp.appColor
