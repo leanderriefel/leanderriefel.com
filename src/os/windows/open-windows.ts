@@ -82,7 +82,7 @@ export const openApp = (app: App) => {
   }
 
   const newWindow: OsWindow = {
-    id: app.id,
+    id: crypto.randomUUID(),
     app,
     display: "default",
     position,

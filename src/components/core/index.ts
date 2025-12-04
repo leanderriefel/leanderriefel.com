@@ -107,3 +107,33 @@ export type { KbdProps } from "./kbd"
 export { Switch } from "./switch"
 export type { SwitchProps } from "./switch"
 
+// Popover
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTitle,
+  PopoverDescription,
+  PopoverClose,
+} from "./popover"
+export type {
+  PopoverProps,
+  PopoverTriggerProps,
+  PopoverAnchorProps,
+  PopoverContentProps,
+  PopoverTitleProps,
+  PopoverDescriptionProps,
+  PopoverCloseProps,
+} from "./popover"
+
+// Select
+export { Select, SelectValue, SelectTrigger, SelectContent, SelectItem, SelectSection } from "./select"
+export type {
+  SelectProps,
+  SelectValueProps,
+  SelectTriggerProps,
+  SelectContentProps,
+  SelectItemProps,
+  SelectSectionProps,
+} from "./select"

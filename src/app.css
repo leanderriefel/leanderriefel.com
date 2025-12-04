@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-kb-theme="dark"], [data-kb-theme="dark"] *));
+
 @theme {
   /* Colors */
   --color-background: var(--background);
@@ -90,7 +92,7 @@
     --radius-3xl: 1.125rem;
   }
 
-  .dark {
+  [data-kb-theme="dark"] {
     /* Dark Mode Variables */
     --background: oklch(0.12 0 296.57deg);
     --foreground: oklch(0.98 0 0);

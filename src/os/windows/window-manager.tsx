@@ -214,7 +214,7 @@ export const Window = (props: OsWindow) => {
   return (
     <ContextMenu>
       <div
-        class={`grid-rows[auto_1fr] absolute border bg-background/25 backdrop-blur-2xl ${
+        class={`absolute h-full grid-rows-[auto_1fr] border bg-background/25 backdrop-blur-2xl ${
           props.display === "minimized" ? "hidden" : "grid"
         } ${
           isFocused(props.id) ? "border-border shadow-xl" : "border-border/50 shadow-md"
@@ -244,6 +244,7 @@ export const Window = (props: OsWindow) => {
                   variant="warning"
                   size="icon-sm"
                   class="my-1 ml-1 size-6 rounded-md"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMinimize}
                 />
               </Tooltip>
@@ -260,6 +261,7 @@ export const Window = (props: OsWindow) => {
                   variant="success"
                   size="icon-sm"
                   class="my-1 size-6 rounded-md"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMaximize}
                 />
               </Tooltip>
@@ -270,13 +272,14 @@ export const Window = (props: OsWindow) => {
                   variant="destructive"
                   size="icon-sm"
                   class="my-1 mr-1 size-6 rounded-md"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleClose}
                 />
               </Tooltip>
             </div>
           </div>
         </ContextMenuTrigger>
-        <div class="size-full grow overflow-hidden rounded-b-xl">{props.app.render()}</div>
+        <div class="min-h-0 w-full overflow-hidden rounded-b-xl">{props.app.render()}</div>
 
         {/* Edges */}
         <div
