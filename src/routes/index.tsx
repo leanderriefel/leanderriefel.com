@@ -1,28 +1,40 @@
-import { WindowManager } from "~/os/windows/window-manager"
-import { appRegistry } from "~/os"
 import { For } from "solid-js"
-import { TaskbarButton, TaskbarButtons } from "~/components/taskbar/taskbar-button"
+import { appRegistry } from "~/os"
+import { WindowManager } from "~/os/windows/window-manager"
+import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
 
-export default function Home() {
+const Home = () => {
   return (
     <div class="relative h-screen w-screen overflow-hidden bg-background selection:bg-primary/20">
-      <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] bg-size-[4rem_4rem] opacity-50" />
+      <div class="relative min-h-screen w-full">
+        <div
+          class="absolute inset-0 z-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 110% 70% at 25% 80%, rgba(147, 51, 234, var(--gradient-alpha-purple)), transparent 55%),
+              radial-gradient(ellipse 130% 60% at 75% 15%, rgba(59, 130, 246, var(--gradient-alpha-blue)), transparent 65%),
+              radial-gradient(ellipse 80% 90% at 20% 30%, rgba(236, 72, 153, var(--gradient-alpha-pink)), transparent 50%),
+              radial-gradient(ellipse 100% 40% at 60% 70%, rgba(16, 185, 129, var(--gradient-alpha-green)), transparent 45%),
+              var(--background)
+            `,
+          }}
+        />
 
-      <div class="pointer-events-none absolute inset-0">
-        <div class="absolute inset-0 bg-linear-to-b from-background/60 via-background/80 to-background/90 opacity-90" />
-        <div class="from-background/95/40 to-background/95/40 absolute inset-0 bg-linear-to-r via-transparent opacity-70 mix-blend-soft-light" />
-      </div>
+        <WindowManager />
 
-      <WindowManager />
-
-      {/* Taskbar */}
-      <div class="absolute bottom-6 left-1/2 z-50 -translate-x-1/2">
-        <div class="flex h-10 w-[95vw] items-center justify-center gap-x-3 rounded-xl border border-border/50 bg-background/10 px-4 shadow-2xl backdrop-blur-xl transition-all sm:w-[60vw]">
-          <TaskbarButtons>
-            <For each={appRegistry}>{(appClass) => <TaskbarButton appClass={appClass} />}</For>
-          </TaskbarButtons>
+        {/* Taskbar */}
+        <div class="absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3">
+          <StartMenu />
+          <div class="soft-glass flex h-10 w-[90vw] items-center justify-center gap-x-3 rounded-2xl px-4 sm:w-[55vw]">
+            <TaskbarButtons>
+              <For each={appRegistry}>{(appClass) => <TaskbarButton appClass={appClass} />}</For>
+            </TaskbarButtons>
+          </div>
+          <ClockBar />
         </div>
       </div>
     </div>
   )
 }
+
+export default Home

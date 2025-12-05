@@ -10,7 +10,7 @@ import {
   openApps,
   setOpenApps,
 } from "~/os/windows/open-windows"
-import { constrainToViewport } from "~/os/utils"
+import { constrainToViewport, cn } from "~/os/utils"
 import { isFocused } from "~/os/focus"
 import { IconButton, Tooltip } from "~/components/core"
 import {
@@ -214,11 +214,14 @@ export const Window = (props: OsWindow) => {
   return (
     <ContextMenu>
       <div
-        class={`absolute h-full grid-rows-[auto_1fr] border bg-background/25 backdrop-blur-2xl ${
-          props.display === "minimized" ? "hidden" : "grid"
-        } ${
-          isFocused(props.id) ? "border-border shadow-xl" : "border-border/50 shadow-md"
-        } ${props.display !== "default" ? "rounded-none" : "rounded-2xl"}`}
+        class={cn("absolute h-full grid-rows-[auto_1fr] border backdrop-blur-2xl", {
+          hidden: props.display === "minimized",
+          grid: props.display !== "minimized",
+          "bg-background shadow-xl": isFocused(props.id),
+          "bg-background/80 shadow-md": !isFocused(props.id),
+          "rounded-none": props.display !== "default",
+          "rounded-xl": props.display === "default",
+        })}
         style={{
           top: `${props.display === "maximized" ? 0 : props.position.y}px`,
           left: `${props.display === "maximized" ? 0 : props.position.x}px`,
@@ -230,11 +233,13 @@ export const Window = (props: OsWindow) => {
       >
         <ContextMenuTrigger class="contents">
           <div
-            class="flex h-8 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl bg-muted/50"
+            class={cn(
+              "flex h-10 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl border-b",
+            )}
             onMouseDown={handleMouseDown}
           >
-            <div class="flex min-w-0 flex-1 items-center gap-2 px-2">
-              <h3 class="ml-1 truncate text-xs tracking-wide text-foreground select-none">{windowName()}</h3>
+            <div class="flex min-w-0 flex-1 items-center gap-2 px-4">
+              <h3 class="truncate text-xs tracking-wide text-foreground select-none">{windowName()}</h3>
             </div>
             <div class="flex shrink-0 items-center gap-1">
               <Tooltip content="Minimize" side="bottom" delayDuration={500}>
@@ -243,7 +248,7 @@ export const Window = (props: OsWindow) => {
                   aria-label="Minimize"
                   variant="warning"
                   size="icon-sm"
-                  class="my-1 ml-1 size-6 rounded-md"
+                  class="my-2 ml-2 size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMinimize}
                 />
@@ -260,7 +265,7 @@ export const Window = (props: OsWindow) => {
                   aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
                   variant="success"
                   size="icon-sm"
-                  class="my-1 size-6 rounded-md"
+                  class="my-2 size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMaximize}
                 />
@@ -271,7 +276,7 @@ export const Window = (props: OsWindow) => {
                   aria-label="Close"
                   variant="destructive"
                   size="icon-sm"
-                  class="my-1 mr-1 size-6 rounded-md"
+                  class="my-2 mr-2 size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleClose}
                 />

@@ -11,8 +11,8 @@ interface TaskbarButtonProps {
 }
 
 const PREVIEW_HEIGHT = 140
+const TASKBAR_TOOLTIP_OPEN_DELAY = 500
 
-// Window Preview Tooltip Content
 const WindowPreviewContent = (props: {
   windows: OsWindow[]
   onWindowClick: (window: OsWindow) => void
@@ -154,8 +154,8 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
         content={tooltipContent()}
         side="top"
         align="center"
-        delayDuration={300}
-        skipDelayDuration={100}
+        delayDuration={TASKBAR_TOOLTIP_OPEN_DELAY}
+        ignoreSafeArea
         contentClass={hasOpenWindows() ? "!p-0 !bg-transparent !border-0 !shadow-none !backdrop-blur-0" : ""}
       >
         <button
@@ -185,7 +185,6 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
   )
 }
 
-// Export a wrapped version with TooltipGroup for instant tooltip switching in taskbar
 export const TaskbarButtons = (props: { children: JSX.Element }) => {
-  return <TooltipGroup skipDelayDuration={100}>{props.children}</TooltipGroup>
+  return <TooltipGroup>{props.children}</TooltipGroup>
 }

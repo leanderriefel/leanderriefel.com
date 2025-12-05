@@ -44,6 +44,22 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);
+
+  /* Text Size */
+  --text-xxs: var(--text-xxs);
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-4xl: var(--text-4xl);
+  --text-5xl: var(--text-5xl);
+  --text-6xl: var(--text-6xl);
+  --text-7xl: var(--text-7xl);
+  --text-8xl: var(--text-8xl);
+  --text-9xl: var(--text-9xl);
 }
 
 @layer base {
@@ -83,6 +99,20 @@
     --input: oklch(0.92 0 0);
     --ring: oklch(0.55 0.2121 315deg);
 
+    --gradient-alpha-purple: 0.24;
+    --gradient-alpha-blue: 0.16;
+    --gradient-alpha-pink: 0.32;
+    --gradient-alpha-green: 0.16;
+
+    --glass-bg-white-start: 0;
+    --glass-bg-white-end: 0;
+    --glass-bg-black-start: 0.09;
+    --glass-bg-black-end: 0.07;
+    --glass-bg-radial-white-1: 0.06;
+    --glass-bg-radial-white-2: 0.05;
+    --glass-border-color: 0, 0, 0;
+    --glass-border-alpha: 0.1;
+
     --radius-xs: 0.375rem;
     --radius-sm: 0.5rem;
     --radius-md: 0.625rem;
@@ -90,17 +120,32 @@
     --radius-xl: 0.875rem;
     --radius-2xl: 1rem;
     --radius-3xl: 1.125rem;
+
+    --text-xxs: 0.675rem;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+    --text-5xl: 3rem;
+    --text-6xl: 3.75rem;
+    --text-7xl: 4.5rem;
+    --text-8xl: 6rem;
+    --text-9xl: 8rem;
   }
 
   [data-kb-theme="dark"] {
     /* Dark Mode Variables */
-    --background: oklch(0.12 0 296.57deg);
+    --background: oklch(0.15 0 0);
     --foreground: oklch(0.98 0 0);
 
-    --card: oklch(0.16 0 296.57deg);
+    --card: oklch(0.2 0 0);
     --card-foreground: oklch(0.98 0 0);
 
-    --popover: oklch(0.16 0 296.57deg);
+    --popover: oklch(0.2 0 0);
     --popover-foreground: oklch(0.98 0 0);
 
     --primary: oklch(0.55 0.2121 315deg);
@@ -127,12 +172,33 @@
     --border: oklch(0.28 0 296.57deg);
     --input: oklch(0.28 0 296.57deg);
     --ring: oklch(0.55 0.2121 315deg);
+
+    --gradient-alpha-purple: 0.06;
+    --gradient-alpha-blue: 0.04;
+    --gradient-alpha-pink: 0.08;
+    --gradient-alpha-green: 0.02;
+
+    --glass-bg-white-start: 0.05;
+    --glass-bg-white-end: 0.04;
+    --glass-bg-black-start: 0;
+    --glass-bg-black-end: 0;
+    --glass-bg-radial-white-1: 0.012;
+    --glass-bg-radial-white-2: 0.01;
+    --glass-border-color: 255, 255, 255;
+    --glass-border-alpha: 0.06;
+    --glass-shadow-black-1: 0.32;
+    --glass-shadow-black-2: 0.22;
   }
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  * {
+    @apply border-border;
+  }
 }
 
 /* Animation utilities for UI components */
@@ -220,4 +286,38 @@ body {
 
 .slide-in-from-right-2 {
   animation-name: slide-in-from-right;
+}
+
+@layer components {
+  .soft-glass {
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, var(--glass-bg-white-start)),
+        rgba(255, 255, 255, var(--glass-bg-white-end))
+      ),
+      linear-gradient(110deg, rgba(0, 0, 0, var(--glass-bg-black-start)), rgba(0, 0, 0, var(--glass-bg-black-end))),
+      radial-gradient(circle at 20% 15%, rgba(255, 255, 255, var(--glass-bg-radial-white-1)), transparent 42%),
+      radial-gradient(circle at 80% 12%, rgba(255, 255, 255, var(--glass-bg-radial-white-2)), transparent 38%);
+    background-blend-mode: overlay, normal, overlay, overlay;
+    border: 1px solid rgba(var(--glass-border-color), var(--glass-border-alpha));
+    backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+    -webkit-backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+  }
+
+  .soft-chip {
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, var(--glass-bg-white-start)),
+        rgba(255, 255, 255, var(--glass-bg-white-end))
+      ),
+      linear-gradient(110deg, rgba(0, 0, 0, var(--glass-bg-black-start)), rgba(0, 0, 0, var(--glass-bg-black-end))),
+      radial-gradient(circle at 20% 15%, rgba(255, 255, 255, var(--glass-bg-radial-white-1)), transparent 42%),
+      radial-gradient(circle at 80% 12%, rgba(255, 255, 255, var(--glass-bg-radial-white-2)), transparent 38%);
+    background-blend-mode: overlay, normal, overlay, overlay;
+    border: 1px solid rgba(var(--glass-border-color), var(--glass-border-alpha));
+    backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+    -webkit-backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+  }
 }

@@ -1,0 +1,9 @@
+---
+alwaysApply: true
+---
+
+Theme colors
+
+- Do not use Tailwind default colors (e.g. bg-black, text-white, slate-_, gray-_).
+- Always use theme CSS variables (bg-background, text-foreground, border-border, accent, etc.).
+- If a new color is needed, first add light and dark definitions in src/app.css and use the variable via the Tailwind token.

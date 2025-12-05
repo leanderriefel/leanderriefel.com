@@ -22,7 +22,7 @@ const buttonVariants = cva(
         outline:
           "border border-input bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent",
         glass:
-          "border border-white/10 bg-white/5 text-white backdrop-blur-xl hover:bg-white/10 hover:border-white/20 shadow-sm",
+          "border border-border/10 bg-background/5 text-foreground backdrop-blur-xl hover:bg-background/10 hover:border-border/20 shadow-sm",
         link: "border-0 bg-transparent text-primary underline-offset-4 hover:text-primary/80 hover:underline",
       },
       size: {
@@ -44,7 +44,8 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends ParentProps,
+  extends
+    ParentProps,
     VariantProps<typeof buttonVariants>,
     Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   class?: string

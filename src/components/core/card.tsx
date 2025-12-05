@@ -5,7 +5,7 @@ import { cn } from "~/os/utils"
 const cardVariants = cva("overflow-hidden rounded-xl transition-all duration-300", {
   variants: {
     variant: {
-      default: "border border-border bg-card/50 backdrop-blur-md shadow-lg hover:shadow-xl hover:bg-card/60",
+      default: "border border-border bg-card/50 backdrop-blur-md shadow-sm hover:bg-card/60",
       glass: "border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl hover:bg-black/50",
       solid: "border border-border bg-card shadow-md",
       ghost: "bg-transparent",
