@@ -13,12 +13,12 @@ import { cn } from "~/os/utils"
 type DropdownMenuPrimitiveSeparatorDivProps = DropdownMenuPrimitiveSeparatorProps<"div">
 
 const dropdownContentVariants = cva(
-  "z-9999 min-w-[180px] overflow-hidden rounded-xl border p-1 shadow-2xl backdrop-blur-xl animate-in fade-in-0",
+  "z-9999 min-w-[180px] overflow-hidden rounded-xl border p-1 shadow-2xl backdrop-blur-xl animate-in  fade-in-0",
   {
     variants: {
       variant: {
         default: "border-border bg-popover/95",
-        glass: "border-foreground/5 bg-foreground/5",
+        glass: "border-foreground/5 bg-background/25",
       },
     },
     defaultVariants: {
@@ -34,6 +34,8 @@ const dropdownItemVariants = cva(
       variant: {
         default:
           "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+        glass:
+          "text-foreground hover:bg-background/50 hover:text-foreground focus-visible:bg-background/75 focus-visible:text-foreground",
         destructive:
           "text-destructive hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 [&_svg]:fill-destructive [&_svg]:text-destructive",
       },

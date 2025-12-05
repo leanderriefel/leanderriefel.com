@@ -1,9 +1,34 @@
-import { For } from "solid-js"
-import { appRegistry } from "~/os"
+import { For, onMount } from "solid-js"
+import { appRegistry, createAppInstance } from "~/os"
+import { InformationApp } from "~/os/apps/information"
+import { read, write } from "~/os/registry"
+import { getValue } from "~/os/utils"
+import { openApp, waitForWindowHydration } from "~/os/windows/open-windows"
 import { WindowManager } from "~/os/windows/window-manager"
 import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
 
+const FIRST_VISIT_KEY = "os_first_visit_shown"
+
 const Home = () => {
+  onMount(() => {
+    void (async () => {
+      await waitForWindowHydration()
+
+      const hasVisited = await read<boolean>(FIRST_VISIT_KEY)
+      if (hasVisited) return
+
+      const infoApp = createAppInstance(InformationApp)
+      const size = infoApp.defaultSize ? getValue(infoApp.defaultSize) : { width: 500, height: 500 }
+      const position = {
+        x: Math.max(0, Math.round((window.innerWidth - size.width) / 2)),
+        y: Math.max(0, Math.round((window.innerHeight - size.height) / 2)),
+      }
+
+      openApp(infoApp, { position })
+      await write(FIRST_VISIT_KEY, true)
+    })()
+  })
+
   return (
     <div class="relative h-screen w-screen overflow-hidden bg-background selection:bg-primary/20">
       <div class="relative min-h-screen w-full">

@@ -1,29 +1,56 @@
 import { createSignal, onCleanup, Accessor } from "solid-js"
 
 export type Primitive = null | undefined | boolean | number | string
+export type RegistryValue = Primitive | object
 
 const DB_NAME = "os-registry"
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = "state"
 
-type Subscriber<T extends Primitive> = (value: T | undefined) => void
-type SubscriberMap = Map<string, Set<Subscriber<Primitive>>>
+type Subscriber<T extends RegistryValue> = (value: T | undefined) => void
+type SubscriberMap = Map<string, Set<Subscriber<RegistryValue>>>
 
 let dbInstance: IDBDatabase | null = null
 let dbPromise: Promise<IDBDatabase> | null = null
 const subscribers: SubscriberMap = new Map()
 
-const openDb = (): Promise<IDBDatabase> => {
+const openDb = (retrying = false): Promise<IDBDatabase> => {
   if (dbInstance) return Promise.resolve(dbInstance)
   if (dbPromise) return dbPromise
 
   dbPromise = new Promise((resolve, reject) => {
+    const resetAndReopen = () => {
+      if (retrying) {
+        reject(new Error("Registry object store missing after retry"))
+        return
+      }
+
+      const deleteRequest = indexedDB.deleteDatabase(DB_NAME)
+
+      deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("Failed to reset registry database"))
+
+      deleteRequest.onblocked = () => reject(new Error("Registry database reset blocked by another connection"))
+
+      deleteRequest.onsuccess = () => {
+        dbInstance = null
+        dbPromise = null
+        openDb(true).then(resolve).catch(reject)
+      }
+    }
+
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onerror = () => reject(request.error)
+    request.onerror = () => reject(request.error ?? new Error("Failed to open registry database"))
 
     request.onsuccess = () => {
       dbInstance = request.result
+
+      if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+        dbInstance.close()
+        resetAndReopen()
+        return
+      }
+
       resolve(dbInstance)
     }
 
@@ -38,7 +65,7 @@ const openDb = (): Promise<IDBDatabase> => {
   return dbPromise
 }
 
-const notifySubscribers = <T extends Primitive>(key: string, value: T | undefined): void => {
+const notifySubscribers = <T extends RegistryValue>(key: string, value: T | undefined): void => {
   const keySubscribers = subscribers.get(key)
   if (keySubscribers) {
     for (const callback of keySubscribers) {
@@ -47,7 +74,7 @@ const notifySubscribers = <T extends Primitive>(key: string, value: T | undefine
   }
 }
 
-export const write = async <T extends Primitive>(key: string, value: T): Promise<void> => {
+export const write = async <T extends RegistryValue>(key: string, value: T): Promise<void> => {
   const db = await openDb()
 
   return new Promise((resolve, reject) => {
@@ -63,7 +90,7 @@ export const write = async <T extends Primitive>(key: string, value: T): Promise
   })
 }
 
-export const read = async <T extends Primitive>(key: string): Promise<T | undefined> => {
+export const read = async <T extends RegistryValue>(key: string): Promise<T | undefined> => {
   const db = await openDb()
 
   return new Promise((resolve, reject) => {
@@ -125,16 +152,16 @@ export const keys = async (): Promise<string[]> => {
   })
 }
 
-export const subscribe = <T extends Primitive>(key: string, callback: Subscriber<T>): (() => void) => {
+export const subscribe = <T extends RegistryValue>(key: string, callback: Subscriber<T>): (() => void) => {
   if (!subscribers.has(key)) {
     subscribers.set(key, new Set())
   }
-  subscribers.get(key)!.add(callback as Subscriber<Primitive>)
+  subscribers.get(key)!.add(callback as Subscriber<RegistryValue>)
 
   return () => {
     const keySubscribers = subscribers.get(key)
     if (keySubscribers) {
-      keySubscribers.delete(callback as Subscriber<Primitive>)
+      keySubscribers.delete(callback as Subscriber<RegistryValue>)
       if (keySubscribers.size === 0) {
         subscribers.delete(key)
       }
@@ -142,7 +169,7 @@ export const subscribe = <T extends Primitive>(key: string, callback: Subscriber
   }
 }
 
-export const createPersistedSignal = <T extends Primitive>(
+export const createPersistedSignal = <T extends RegistryValue>(
   key: string,
   defaultValue: T,
 ): [Accessor<T>, (value: T | ((prev: T) => T)) => Promise<void>] => {
@@ -173,7 +200,7 @@ export const createPersistedSignal = <T extends Primitive>(
   return [value, setPersistedValue]
 }
 
-export const writeBatch = async (entries: Array<[string, Primitive]>): Promise<void> => {
+export const writeBatch = async (entries: Array<[string, RegistryValue]>): Promise<void> => {
   const db = await openDb()
 
   return new Promise((resolve, reject) => {
@@ -194,7 +221,7 @@ export const writeBatch = async (entries: Array<[string, Primitive]>): Promise<v
   })
 }
 
-export const readBatch = async <T extends Primitive>(keys: string[]): Promise<Map<string, T | undefined>> => {
+export const readBatch = async <T extends RegistryValue>(keys: string[]): Promise<Map<string, T | undefined>> => {
   const db = await openDb()
 
   return new Promise((resolve, reject) => {
