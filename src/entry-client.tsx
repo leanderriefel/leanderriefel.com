@@ -1,4 +1,6 @@
 // @refresh reload
-import { mount, StartClient } from "@solidjs/start/client";
+import { mount, StartClient } from "@solidjs/start/client"
 
-mount(() => <StartClient />, document.getElementById("app")!);
+const dispose = mount(() => <StartClient />, document.getElementById("app")!)
+
+export default dispose

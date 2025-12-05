@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Use Bun as a package manager and runtime. Never use npm, yarn or pnpm! Run scripts with bun run <script>. And install dependencies with bun install <package>.
