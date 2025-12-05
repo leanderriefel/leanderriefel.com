@@ -35,6 +35,12 @@ export class InformationApp extends App {
           </p>
 
           <p>
+            As a hobby, I also dabble in visual work like graphic design, editing in Photoshop and Illustrator, 3D
+            graphics with Blender and Cinema 4D, plus VFX and cutting in After Effects and Premiere Pro. Not my main
+            focus, but fun on the side.
+          </p>
+
+          <p>
             I love to take on new challenges. Always on the lookout for new work, open source in my free time or for
             money on occasion :).
           </p>
