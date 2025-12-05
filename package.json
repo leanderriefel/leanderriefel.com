@@ -37,5 +37,8 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "resolutions": {
+    "estree-walker": "npm:@benpsnyder/estree-walker@3.0.3"
   }
 }
