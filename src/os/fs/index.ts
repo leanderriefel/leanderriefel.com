@@ -1,12 +1,14 @@
+import Dexie, { Table } from "dexie"
+
 const DB_NAME = "os-fs"
 const DB_VERSION = 1
 const META_STORE = "meta"
 const CHUNK_STORE = "chunks"
 const DEFAULT_CHUNK_SIZE = 256 * 1024
 
-type EntryType = "file" | "dir"
+type EntryType = "link" | "file" | "dir"
 
-export type FsPath = string
+export type FsPath = `/` | `/${string}`
 
 export type FileContent =
   | string
@@ -18,7 +20,6 @@ export type FileContent =
 
 export interface BaseEntry {
   path: FsPath
-  name: string
   created: number
   type: EntryType
 }
@@ -34,9 +35,14 @@ export interface DirEntry extends BaseEntry {
   type: "dir"
 }
 
-export type FsEntry = FileEntry | DirEntry
+export interface LinkEntry extends BaseEntry {
+  type: "link"
+  target: FsPath
+}
 
-type StoredEntry = (FileEntry | DirEntry) & {
+export type FsEntry = FileEntry | DirEntry | LinkEntry
+
+type StoredEntry = FsEntry & {
   parent: FsPath
   chunkCount?: number
 }
@@ -62,7 +68,18 @@ type RemoveOptions = {
   recursive?: boolean
 }
 
-let dbPromise: Promise<IDBDatabase> | null = null
+class FsDexie extends Dexie {
+  meta!: Table<StoredEntry, string>
+  chunks!: Table<StoredChunk, string>
+
+  constructor() {
+    super(DB_NAME)
+    this.version(DB_VERSION).stores({
+      [META_STORE]: "&path,parent",
+      [CHUNK_STORE]: "&key,path,index",
+    })
+  }
+}
 
 const ensureClient = () => {
   if (typeof indexedDB === "undefined") {
@@ -70,36 +87,30 @@ const ensureClient = () => {
   }
 }
 
-const openDb = (): Promise<IDBDatabase> => {
+const db = new FsDexie()
+
+const ensureDbOpen = async (): Promise<FsDexie> => {
   ensureClient()
-
-  if (dbPromise) return dbPromise
-
-  dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => reject(request.error ?? new Error("Failed to open fs database"))
-
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(META_STORE)) {
-        const metaStore = db.createObjectStore(META_STORE, { keyPath: "path" })
-        metaStore.createIndex("byParent", "parent", { unique: false })
-      }
-      if (!db.objectStoreNames.contains(CHUNK_STORE)) {
-        const chunkStore = db.createObjectStore(CHUNK_STORE, { keyPath: "key" })
-        chunkStore.createIndex("byPath", "path", { unique: false })
-      }
-    }
-
-    request.onsuccess = () => resolve(request.result)
-  })
-
-  return dbPromise
+  if (!db.isOpen()) {
+    await db.open()
+  }
+  return db
 }
 
+export const DEFAULT_FOLDERS: FsPath[] = ["/Desktop", "/Documents", "/Pictures", "/Music", "/Videos", "/Downloads"]
+
 export const initFs = async () => {
-  await openDb()
+  await ensureDbOpen()
+  await ensureDefaultFolders()
+}
+
+const ensureDefaultFolders = async () => {
+  for (const folderPath of DEFAULT_FOLDERS) {
+    const existing = await getEntry(folderPath)
+    if (!existing) {
+      await mkdir(folderPath, { parents: true })
+    }
+  }
 }
 
 const normalizePath = (input: string): FsPath => {
@@ -117,17 +128,17 @@ const normalizePath = (input: string): FsPath => {
     stack.push(part)
   }
 
-  return "/" + stack.join("/")
+  return `/${stack.join("/")}` as FsPath
 }
 
-const parentPath = (path: FsPath): FsPath => {
+export const parentPath = (path: FsPath): FsPath => {
   if (path === "/") return "/"
   const idx = path.lastIndexOf("/")
   if (idx <= 0) return "/"
-  return path.slice(0, idx) || "/"
+  return (path.slice(0, idx) || "/") as FsPath
 }
 
-const entryName = (path: FsPath): string => {
+export const entryName = (path: FsPath): string => {
   if (path === "/") return ""
   const idx = path.lastIndexOf("/")
   return path.slice(idx + 1)
@@ -135,120 +146,61 @@ const entryName = (path: FsPath): string => {
 
 const chunkKey = (path: FsPath, index: number) => `${path}::${index.toString().padStart(8, "0")}`
 
-const withStore = <T>(
-  storeName: string | string[],
-  mode: IDBTransaction["mode"],
-  handler: (tx: IDBTransaction) => Promise<T>,
-): Promise<T> =>
-  openDb().then(
-    (db) =>
-      new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, mode)
-        const done = new Promise<void>((res, rej) => {
-          tx.oncomplete = () => res()
-          tx.onabort = () => rej(tx.error ?? new Error("IndexedDB transaction aborted"))
-          tx.onerror = () => rej(tx.error ?? new Error("IndexedDB transaction failed"))
-        })
-
-        handler(tx)
-          .then((result) => done.then(() => resolve(result)))
-          .catch((err) => {
-            tx.abort()
-            reject(err)
-          })
-      }),
-  )
-
-const getEntry = async (path: FsPath): Promise<StoredEntry | undefined> => {
-  return withStore(META_STORE, "readonly", async (tx) => {
-    const store = tx.objectStore(META_STORE)
-    const request = store.get(path)
-    return new Promise((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve(request.result as StoredEntry | undefined)
-    })
-  })
+export const getEntry = async (path: FsPath): Promise<StoredEntry | undefined> => {
+  const database = await ensureDbOpen()
+  return database.meta.get(path)
 }
 
-const putEntry = async (entry: StoredEntry) => {
-  return withStore(META_STORE, "readwrite", async (tx) => {
-    const store = tx.objectStore(META_STORE)
-    const request = store.put(entry)
-    return new Promise<void>((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve()
-    })
-  })
+export const putEntry = async (entry: StoredEntry) => {
+  const database = await ensureDbOpen()
+  await database.meta.put(entry)
 }
 
-const deleteEntry = async (path: FsPath) => {
-  return withStore(META_STORE, "readwrite", async (tx) => {
-    const store = tx.objectStore(META_STORE)
-    const request = store.delete(path)
-    return new Promise<void>((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve()
-    })
-  })
+export const deleteEntry = async (path: FsPath) => {
+  const database = await ensureDbOpen()
+  await database.meta.delete(path)
 }
 
-const getChildren = async (dir: FsPath): Promise<StoredEntry[]> => {
-  return withStore(META_STORE, "readonly", async (tx) => {
-    const store = tx.objectStore(META_STORE)
-    const index = store.index("byParent")
-    const request = index.getAll(dir)
-    return new Promise((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve((request.result as StoredEntry[] | undefined) ?? [])
-    })
-  })
+export const getChildren = async (dir: FsPath): Promise<StoredEntry[]> => {
+  const database = await ensureDbOpen()
+  const children = await database.meta.where("parent").equals(dir).toArray()
+  return children ?? []
 }
 
-const deleteChunks = async (path: FsPath) => {
-  return withStore(CHUNK_STORE, "readwrite", async (tx) => {
-    const store = tx.objectStore(CHUNK_STORE)
-    const index = store.index("byPath")
-    const request = index.getAllKeys(path)
-    const keys = await new Promise<string[]>((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve((request.result as string[]) ?? [])
-    })
-
-    for (const key of keys) {
-      store.delete(key)
-    }
-  })
+export const deleteChunks = async (path: FsPath) => {
+  const database = await ensureDbOpen()
+  await database.chunks.where("path").equals(path).delete()
 }
 
-const putChunk = async (chunk: StoredChunk) => {
-  return withStore(CHUNK_STORE, "readwrite", async (tx) => {
-    const store = tx.objectStore(CHUNK_STORE)
-    const request = store.put(chunk)
-    return new Promise<void>((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => resolve()
-    })
-  })
+export const putChunk = async (chunk: StoredChunk) => {
+  const database = await ensureDbOpen()
+  await database.chunks.put(chunk)
 }
 
-const getChunks = async (path: FsPath): Promise<StoredChunk[]> => {
-  return withStore(CHUNK_STORE, "readonly", async (tx) => {
-    const store = tx.objectStore(CHUNK_STORE)
-    const index = store.index("byPath")
-    const request = index.getAll(path)
-    return new Promise((resolve, reject) => {
-      request.onerror = () => reject(request.error)
-      request.onsuccess = () => {
-        const result = (request.result as StoredChunk[] | undefined) ?? []
-        resolve(result.sort((a, b) => a.index - b.index))
-      }
-    })
-  })
+export const getChunks = async (path: FsPath): Promise<StoredChunk[]> => {
+  const database = await ensureDbOpen()
+  const chunks = await database.chunks.where("path").equals(path).sortBy("index")
+  return chunks ?? []
 }
 
-const encoder = new TextEncoder()
+export const resolveLink = async (path: FsPath): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
+  const entry = await getEntry(path)
+  if (!entry) return { resolved: path, entry: undefined }
+  if (entry.type !== "link") return { resolved: path, entry }
 
-const toAsyncIterable = async function* (
+  const targetPath = normalizePath(entry.target)
+  const targetEntry = await getEntry(targetPath)
+  return { resolved: targetPath, entry: targetEntry }
+}
+
+export const getEntryRaw = async (path: FsPath): Promise<StoredEntry | undefined> => {
+  const database = await ensureDbOpen()
+  return database.meta.get(path)
+}
+
+export const encoder = new TextEncoder()
+
+export const toAsyncIterable = async function* (
   input: FileContent,
   chunkSize: number,
 ): AsyncGenerator<Uint8Array, void, unknown> {
@@ -288,17 +240,17 @@ const toAsyncIterable = async function* (
   }
 }
 
-const sliceBuffer = function* (data: Uint8Array, chunkSize: number) {
+export const sliceBuffer = function* (data: Uint8Array, chunkSize: number) {
   for (let offset = 0; offset < data.byteLength; offset += chunkSize) {
     yield data.subarray(offset, Math.min(offset + chunkSize, data.byteLength))
   }
 }
 
-const isReadableStream = (value: unknown): value is ReadableStream<Uint8Array> => {
+export const isReadableStream = (value: unknown): value is ReadableStream<Uint8Array> => {
   return typeof value === "object" && value !== null && typeof (value as ReadableStream).getReader === "function"
 }
 
-const readableStreamToAsyncIterable = async function* (stream: ReadableStream<Uint8Array>) {
+export const readableStreamToAsyncIterable = async function* (stream: ReadableStream<Uint8Array>) {
   const reader = stream.getReader()
   try {
     while (true) {
@@ -311,7 +263,7 @@ const readableStreamToAsyncIterable = async function* (stream: ReadableStream<Ui
   }
 }
 
-const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean }) => {
+export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean }) => {
   if (path === "/") return
 
   const existing = await getEntry(path)
@@ -329,7 +281,6 @@ const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean })
   const now = Date.now()
   const dir: StoredEntry = {
     path,
-    name: entryName(path),
     parent,
     type: "dir",
     created: now,
@@ -343,76 +294,131 @@ export const mkdir = async (inputPath: FsPath, options: { parents?: boolean } = 
   await ensureDirExists(path, { parents: options.parents })
 }
 
+export const symlink = async (linkPath: FsPath, targetPath: FsPath, options: { parents?: boolean } = {}) => {
+  const link = normalizePath(linkPath)
+  const target = normalizePath(targetPath)
+
+  if (link === "/") throw new Error("Cannot create symlink at root")
+
+  const parent = parentPath(link)
+  await ensureDirExists(parent, { parents: options.parents ?? false })
+
+  const existingLink = await getEntry(link)
+  if (existingLink) {
+    if (existingLink.type === "dir") throw new Error(`Cannot create symlink, ${link} is a directory`)
+    if (existingLink.type === "file") throw new Error(`Cannot create symlink, ${link} is a file`)
+    throw new Error(`Symlink already exists at ${link}`)
+  }
+
+  const targetEntry = await getEntryRaw(target)
+  if (targetEntry && targetEntry.type === "link") {
+    throw new Error(`Cannot create symlink to another symlink (${target})`)
+  }
+
+  const now = Date.now()
+  const linkEntry: StoredEntry = {
+    path: link,
+    parent,
+    type: "link",
+    target,
+    created: now,
+  }
+  await putEntry(linkEntry)
+}
+
+export const readlink = async (inputPath: FsPath): Promise<FsPath | undefined> => {
+  const path = normalizePath(inputPath)
+  const entry = await getEntryRaw(path)
+  if (!entry) return undefined
+  if (entry.type !== "link") throw new Error(`${path} is not a symlink`)
+  return entry.target
+}
+
 export const stat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
   const path = normalizePath(inputPath)
-  const entry = await getEntry(path)
+  const { entry } = await resolveLink(path)
+  return entry ?? undefined
+}
+
+export const lstat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
+  const path = normalizePath(inputPath)
+  const entry = await getEntryRaw(path)
   return entry ?? undefined
 }
 
 export const list = async (inputPath: FsPath = "/"): Promise<FsEntry[]> => {
   const path = normalizePath(inputPath)
+  let targetPath = path
+
   if (path !== "/") {
-    const dir = await getEntry(path)
-    if (!dir) throw new Error(`Directory ${path} does not exist`)
-    if (dir.type !== "dir") throw new Error(`${path} is not a directory`)
-  }
-  const children = await getChildren(path)
-  return children.sort((a, b) => a.name.localeCompare(b.name))
-}
-
-const writeChunks = async (
-  path: FsPath,
-  content: FileContent,
-  chunkSize: number,
-): Promise<{ size: number; chunkCount: number }> => {
-  let chunkCount = 0
-  let totalSize = 0
-
-  await deleteChunks(path)
-
-  for await (const chunk of toAsyncIterable(content, chunkSize)) {
-    const data = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
-    const bytes = data.slice()
-    totalSize += bytes.byteLength
-    const record: StoredChunk = {
-      key: chunkKey(path, chunkCount),
-      path,
-      index: chunkCount,
-      data: new Blob([bytes]),
-    }
-    await putChunk(record)
-    chunkCount++
+    const { resolved, entry } = await resolveLink(path)
+    if (!entry) throw new Error(`Directory ${path} does not exist`)
+    if (entry.type !== "dir") throw new Error(`${path} is not a directory`)
+    targetPath = resolved
   }
 
-  return { size: totalSize, chunkCount }
+  const children = await getChildren(targetPath)
+  return children.sort((a, b) => entryName(a.path).localeCompare(entryName(b.path)))
 }
 
 export const writeFile = async (inputPath: FsPath, data: FileContent, options: WriteOptions = {}) => {
-  const path = normalizePath(inputPath)
+  const inputNormalized = normalizePath(inputPath)
+
+  const rawEntry = await getEntryRaw(inputNormalized)
+  const isLink = rawEntry?.type === "link"
+  const { resolved: path, entry: existing } = await resolveLink(inputNormalized)
+
   const now = Date.now()
-  const parent = parentPath(path)
+  const parent = isLink ? parentPath(path) : parentPath(inputNormalized)
 
-  await ensureDirExists(parent, { parents: options.parents ?? false })
+  if (!isLink) {
+    await ensureDirExists(parent, { parents: options.parents ?? false })
+  }
 
-  const existing = await getEntry(path)
   if (existing && existing.type === "dir") throw new Error(`Cannot write file, ${path} is a directory`)
 
   const chunkSize = options.chunkSize ?? DEFAULT_CHUNK_SIZE
-  const { size, chunkCount } = await writeChunks(path, data, chunkSize)
+  let chunkCount = 0
+  let totalSize = 0
 
-  const fileEntry: StoredEntry = {
-    path,
-    name: entryName(path),
-    parent,
-    type: "file",
-    created: existing?.created ?? now,
-    modified: now,
-    size,
-    mimeType: options.mimeType,
-    chunkCount,
-  }
+  const database = await ensureDbOpen()
+  await database.transaction("rw", database.meta, database.chunks, async () => {
+    await database.chunks.where("path").equals(path).delete()
 
-  await putEntry(fileEntry)
+    for await (const chunk of toAsyncIterable(data, chunkSize)) {
+      const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+      totalSize += bytes.byteLength
+      const arrayBuffer =
+        bytes.buffer instanceof ArrayBuffer
+          ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+          : (() => {
+              const clone = new ArrayBuffer(bytes.byteLength)
+              new Uint8Array(clone).set(bytes)
+              return clone
+            })()
+      const record: StoredChunk = {
+        key: chunkKey(path, chunkCount),
+        path,
+        index: chunkCount,
+        data: new Blob([arrayBuffer]),
+      }
+      await database.chunks.put(record)
+      chunkCount++
+    }
+
+    const fileEntry: StoredEntry = {
+      path,
+      parent,
+      type: "file",
+      created: existing?.created ?? now,
+      modified: now,
+      size: totalSize,
+      mimeType: options.mimeType,
+      chunkCount,
+    }
+
+    await database.meta.put(fileEntry)
+  })
 }
 
 export const writeFileStream = async (
@@ -423,7 +429,7 @@ export const writeFileStream = async (
   return writeFile(inputPath, source, options)
 }
 
-const concatChunks = async (chunks: StoredChunk[]): Promise<Uint8Array> => {
+export const concatChunks = async (chunks: StoredChunk[]): Promise<Uint8Array> => {
   const buffers: Uint8Array[] = []
   let total = 0
 
@@ -446,10 +452,10 @@ export const readFile = async (
   inputPath: FsPath,
   options: ReadOptions = {},
 ): Promise<ArrayBuffer | string | Blob | undefined> => {
-  const path = normalizePath(inputPath)
-  const entry = await getEntry(path)
+  const inputNormalized = normalizePath(inputPath)
+  const { resolved: path, entry } = await resolveLink(inputNormalized)
   if (!entry) return undefined
-  if (entry.type !== "file") throw new Error(`${path} is a directory`)
+  if (entry.type !== "file") throw new Error(`${path} is not a file`)
 
   const chunks = await getChunks(path)
   const merged = await concatChunks(chunks)
@@ -466,10 +472,10 @@ export const readFile = async (
 }
 
 export const readFileStream = async (inputPath: FsPath): Promise<ReadableStream<Uint8Array>> => {
-  const path = normalizePath(inputPath)
-  const entry = await getEntry(path)
-  if (!entry) throw new Error(`File ${path} not found`)
-  if (entry.type !== "file") throw new Error(`${path} is a directory`)
+  const inputNormalized = normalizePath(inputPath)
+  const { resolved: path, entry } = await resolveLink(inputNormalized)
+  if (!entry) throw new Error(`File ${inputNormalized} not found`)
+  if (entry.type !== "file") throw new Error(`${path} is not a file`)
 
   const chunks = await getChunks(path)
   let index = 0
@@ -495,12 +501,21 @@ export const readFileStream = async (inputPath: FsPath): Promise<ReadableStream<
 export const remove = async (inputPath: FsPath, options: RemoveOptions = {}) => {
   const path = normalizePath(inputPath)
   if (path === "/") throw new Error("Cannot remove root directory")
-  const entry = await getEntry(path)
+  const entry = await getEntryRaw(path)
   if (!entry) return
 
+  const database = await ensureDbOpen()
+
+  if (entry.type === "link") {
+    await database.meta.delete(path)
+    return
+  }
+
   if (entry.type === "file") {
-    await deleteChunks(path)
-    await deleteEntry(path)
+    await database.transaction("rw", database.meta, database.chunks, async () => {
+      await database.chunks.where("path").equals(path).delete()
+      await database.meta.delete(path)
+    })
     return
   }
 
@@ -513,13 +528,104 @@ export const remove = async (inputPath: FsPath, options: RemoveOptions = {}) => 
     await remove(child.path, options)
   }
 
-  await deleteEntry(path)
+  await database.meta.delete(path)
 }
 
 export const clear = async () => {
-  await withStore([META_STORE, CHUNK_STORE], "readwrite", async (tx) => {
-    tx.objectStore(META_STORE).clear()
-    tx.objectStore(CHUNK_STORE).clear()
-    return Promise.resolve()
+  const database = await ensureDbOpen()
+  await database.transaction("rw", database.meta, database.chunks, async () => {
+    await database.meta.clear()
+    await database.chunks.clear()
   })
+}
+
+export const rename = async (oldPath: FsPath, newName: string): Promise<void> => {
+  const normalizedOld = normalizePath(oldPath)
+  if (normalizedOld === "/") throw new Error("Cannot rename root directory")
+
+  const entry = await getEntryRaw(normalizedOld)
+  if (!entry) throw new Error(`Path ${normalizedOld} does not exist`)
+
+  const parent = parentPath(normalizedOld)
+  const newPath = (parent === "/" ? `/${newName}` : `${parent}/${newName}`) as FsPath
+
+  const existingAtNew = await getEntryRaw(newPath)
+  if (existingAtNew) throw new Error(`Path ${newPath} already exists`)
+
+  const database = await ensureDbOpen()
+
+  if (entry.type === "file") {
+    await database.transaction("rw", database.meta, database.chunks, async () => {
+      const chunks = await database.chunks.where("path").equals(normalizedOld).toArray()
+
+      for (const chunk of chunks) {
+        const newKey = `${newPath}::${chunk.index.toString().padStart(8, "0")}`
+        await database.chunks.put({
+          ...chunk,
+          key: newKey,
+          path: newPath,
+        })
+        await database.chunks.delete(chunk.key)
+      }
+
+      await database.meta.put({
+        ...entry,
+        path: newPath,
+      })
+      await database.meta.delete(normalizedOld)
+    })
+    return
+  }
+
+  if (entry.type === "dir") {
+    const renameRecursive = async (currentPath: FsPath, newBasePath: FsPath) => {
+      const children = await getChildren(currentPath)
+
+      for (const child of children) {
+        const childName = entryName(child.path)
+        const newChildPath = `${newBasePath}/${childName}` as FsPath
+
+        if (child.type === "dir") {
+          await renameRecursive(child.path, newChildPath)
+        } else if (child.type === "file") {
+          const chunks = await database.chunks.where("path").equals(child.path).toArray()
+
+          for (const chunk of chunks) {
+            const newKey = `${newChildPath}::${chunk.index.toString().padStart(8, "0")}`
+            await database.chunks.put({
+              ...chunk,
+              key: newKey,
+              path: newChildPath,
+            })
+            await database.chunks.delete(chunk.key)
+          }
+        }
+
+        await database.meta.put({
+          ...child,
+          path: newChildPath,
+          parent: newBasePath,
+        })
+        await database.meta.delete(child.path)
+      }
+    }
+
+    await database.transaction("rw", database.meta, database.chunks, async () => {
+      await renameRecursive(normalizedOld, newPath)
+      await database.meta.put({
+        ...entry,
+        path: newPath,
+      })
+      await database.meta.delete(normalizedOld)
+    })
+    return
+  }
+
+  if (entry.type === "link") {
+    await database.meta.put({
+      ...entry,
+      path: newPath,
+    })
+    await database.meta.delete(normalizedOld)
+  }
 }

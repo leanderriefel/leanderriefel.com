@@ -92,7 +92,7 @@ export const ContextMenuItem = (props: ContextMenuItemProps) => {
       {...rest}
     >
       {local.icon && <span class="flex size-4 items-center justify-center text-muted-foreground/80">{local.icon}</span>}
-      <span class="flex-1 text-left">{local.children}</span>
+      <span class="flex flex-1 items-center text-left">{local.children}</span>
       {local.shortcut && <span class="ml-auto text-xs tracking-wide text-muted-foreground/80">{local.shortcut}</span>}
     </ContextMenuPrimitive.Item>
   )
@@ -151,7 +151,7 @@ export const ContextMenuSub = (props: ContextMenuSubProps) => {
       <ContextMenuPrimitive.Portal>
         <ContextMenuPrimitive.SubContent
           class={cn(
-            "animate-in fade-in-0 slide-in-from-left-1 min-w-[160px] overflow-hidden rounded-xl border border-border bg-popover/95 p-1 shadow-2xl ring-0 backdrop-blur-xl outline-none focus:outline-none focus-visible:ring-0 focus-visible:outline-none",
+            "animate-in fade-in-0 slide-in-from-left-1 z-2000 min-w-[160px] overflow-hidden rounded-xl border border-border bg-popover/95 p-1 shadow-2xl ring-0 backdrop-blur-xl outline-none focus:outline-none focus-visible:ring-0 focus-visible:outline-none",
             local.contentClass,
           )}
         >

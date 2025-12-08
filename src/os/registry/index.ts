@@ -1,3 +1,4 @@
+import Dexie, { Table } from "dexie"
 import { createSignal, onCleanup, Accessor } from "solid-js"
 
 export type Primitive = null | undefined | boolean | number | string
@@ -10,59 +11,33 @@ const STORE_NAME = "state"
 type Subscriber<T extends RegistryValue> = (value: T | undefined) => void
 type SubscriberMap = Map<string, Set<Subscriber<RegistryValue>>>
 
-let dbInstance: IDBDatabase | null = null
-let dbPromise: Promise<IDBDatabase> | null = null
 const subscribers: SubscriberMap = new Map()
 
-const openDb = (retrying = false): Promise<IDBDatabase> => {
-  if (dbInstance) return Promise.resolve(dbInstance)
-  if (dbPromise) return dbPromise
+class RegistryDexie extends Dexie {
+  state!: Table<RegistryValue, string>
 
-  dbPromise = new Promise((resolve, reject) => {
-    const resetAndReopen = () => {
-      if (retrying) {
-        reject(new Error("Registry object store missing after retry"))
-        return
-      }
+  constructor() {
+    super(DB_NAME)
+    this.version(DB_VERSION).stores({
+      [STORE_NAME]: "",
+    })
+  }
+}
 
-      const deleteRequest = indexedDB.deleteDatabase(DB_NAME)
+const ensureClient = () => {
+  if (typeof indexedDB === "undefined") {
+    throw new Error("IndexedDB is not available in this environment")
+  }
+}
 
-      deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("Failed to reset registry database"))
+const db = new RegistryDexie()
 
-      deleteRequest.onblocked = () => reject(new Error("Registry database reset blocked by another connection"))
-
-      deleteRequest.onsuccess = () => {
-        dbInstance = null
-        dbPromise = null
-        openDb(true).then(resolve).catch(reject)
-      }
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => reject(request.error ?? new Error("Failed to open registry database"))
-
-    request.onsuccess = () => {
-      dbInstance = request.result
-
-      if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
-        dbInstance.close()
-        resetAndReopen()
-        return
-      }
-
-      resolve(dbInstance)
-    }
-
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
-      }
-    }
-  })
-
-  return dbPromise
+const ensureDbOpen = async (): Promise<RegistryDexie> => {
+  ensureClient()
+  if (!db.isOpen()) {
+    await db.open()
+  }
+  return db
 }
 
 const notifySubscribers = <T extends RegistryValue>(key: string, value: T | undefined): void => {
@@ -75,81 +50,35 @@ const notifySubscribers = <T extends RegistryValue>(key: string, value: T | unde
 }
 
 export const write = async <T extends RegistryValue>(key: string, value: T): Promise<void> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite")
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.put(value, key)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      notifySubscribers(key, value)
-      resolve()
-    }
-  })
+  const database = await ensureDbOpen()
+  await database.state.put(value, key)
+  notifySubscribers(key, value)
 }
 
 export const read = async <T extends RegistryValue>(key: string): Promise<T | undefined> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly")
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.get(key)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result as T | undefined)
-  })
+  const database = await ensureDbOpen()
+  return (await database.state.get(key)) as T | undefined
 }
 
 export const remove = async (key: string): Promise<void> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite")
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.delete(key)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      notifySubscribers(key, undefined)
-      resolve()
-    }
-  })
+  const database = await ensureDbOpen()
+  await database.state.delete(key)
+  notifySubscribers(key, undefined)
 }
 
 export const clear = async (): Promise<void> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite")
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.clear()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      for (const key of subscribers.keys()) {
-        notifySubscribers(key, undefined)
-      }
-      resolve()
-    }
+  const database = await ensureDbOpen()
+  await database.transaction("rw", database.state, async () => {
+    await database.state.clear()
   })
+  for (const key of subscribers.keys()) {
+    notifySubscribers(key, undefined)
+  }
 }
 
 export const keys = async (): Promise<string[]> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly")
-    const store = tx.objectStore(STORE_NAME)
-    const request = store.getAllKeys()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      resolve(request.result as string[])
-    }
-  })
+  const database = await ensureDbOpen()
+  return (await database.state.toCollection().primaryKeys()) as string[]
 }
 
 export const subscribe = <T extends RegistryValue>(key: string, callback: Subscriber<T>): (() => void) => {
@@ -201,51 +130,27 @@ export const createPersistedSignal = <T extends RegistryValue>(
 }
 
 export const writeBatch = async (entries: Array<[string, RegistryValue]>): Promise<void> => {
-  const db = await openDb()
-
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readwrite")
-    const store = tx.objectStore(STORE_NAME)
-
-    tx.onerror = () => reject(tx.error)
-    tx.oncomplete = () => {
-      for (const [key, value] of entries) {
-        notifySubscribers(key, value)
-      }
-      resolve()
-    }
-
+  if (entries.length === 0) return
+  const database = await ensureDbOpen()
+  await database.transaction("rw", database.state, async () => {
     for (const [key, value] of entries) {
-      store.put(value, key)
+      await database.state.put(value, key)
     }
   })
+  for (const [key, value] of entries) {
+    notifySubscribers(key, value)
+  }
 }
 
 export const readBatch = async <T extends RegistryValue>(keys: string[]): Promise<Map<string, T | undefined>> => {
-  const db = await openDb()
+  const database = await ensureDbOpen()
+  const results = new Map<string, T | undefined>()
+  if (keys.length === 0) return results
 
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly")
-    const store = tx.objectStore(STORE_NAME)
-    const results = new Map<string, T | undefined>()
-    let pending = keys.length
-
-    if (pending === 0) {
-      resolve(results)
-      return
-    }
-
-    tx.onerror = () => reject(tx.error)
-
-    for (const key of keys) {
-      const request = store.get(key)
-      request.onsuccess = () => {
-        results.set(key, request.result as T | undefined)
-        pending--
-        if (pending === 0) {
-          resolve(results)
-        }
-      }
-    }
+  const values = await database.state.bulkGet(keys)
+  keys.forEach((key, index) => {
+    results.set(key, values[index] as T | undefined)
   })
+
+  return results
 }
