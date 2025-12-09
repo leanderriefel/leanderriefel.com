@@ -712,11 +712,11 @@ export class FileExplorerApp extends App {
                                   <span class="w-24 text-right text-xs text-muted-foreground">
                                     {formatDate(entry.type === "file" ? (entry as FileEntry).modified : entry.created)}
                                   </span>
-                                  <span class="w-20 text-right text-xs text-muted-foreground capitalize">
+                                  <span class="w-20 text-right text-xs text-muted-foreground">
                                     {entry.type === "dir" ? "Folder" : fsEntryName(entry.path).split(".").pop()}
                                   </span>
                                   <span class="w-16 text-right text-xs text-muted-foreground">
-                                    {entry.type === "file" ? formatFileSize((entry as FileEntry).size) : "—"}
+                                    {entry.type === "file" ? formatFileSize((entry as FileEntry).size) : "-"}
                                   </span>
                                 </button>
                               </ContextMenuTrigger>
@@ -728,14 +728,14 @@ export class FileExplorerApp extends App {
                     }
                   >
                     {/* Grid view */}
-                    <div class="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] gap-2">
+                    <div class="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] place-items-center gap-2">
                       <For each={this.entries()}>
                         {(entry) => (
                           <ContextMenu>
                             <ContextMenuTrigger>
                               <button
                                 class={cn(
-                                  "group flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors hover:bg-accent",
+                                  "group flex size-[90px] flex-col items-center gap-1.5 rounded-lg p-2 text-ellipsis transition-colors hover:bg-accent",
                                   this.selectedEntry[0]() === entry.path && "bg-accent",
                                 )}
                                 onClick={() => this.selectedEntry[1](entry.path)}
