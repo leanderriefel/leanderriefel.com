@@ -5,11 +5,14 @@ export class InformationApp extends App {
   static appId = "information"
   static appName = "Information"
   static appIcon = "info"
+  static appDescription = "Learn about Leander Riefel and find ways to connect."
   static appColor = "purple"
+  static appProtected = true
 
   id = InformationApp.appId
   name = InformationApp.appName
   icon = InformationApp.appIcon
+  description = InformationApp.appDescription
   color = InformationApp.appColor
   defaultSize = { width: 1000, height: 700 }
 

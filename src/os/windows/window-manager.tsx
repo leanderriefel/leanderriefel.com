@@ -284,7 +284,7 @@ export const Window = (props: OsWindow) => {
             </div>
           </div>
         </ContextMenuTrigger>
-        <div class="min-h-0 w-full overflow-hidden rounded-b-xl">{props.app.render()}</div>
+        <div class="@container min-h-0 w-full overflow-auto rounded-b-xl">{props.app.render()}</div>
 
         {/* Edges */}
         <div

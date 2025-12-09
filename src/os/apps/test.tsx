@@ -30,11 +30,13 @@ export class TestApp extends App {
   static appId = "test"
   static appName = "Test"
   static appIcon = "test"
+  static appDescription = "Playground for UI components and interactions."
   static appColor = "red"
 
   id = TestApp.appId
   name = TestApp.appName
   icon = TestApp.appIcon
+  description = TestApp.appDescription
   color = TestApp.appColor
 
   private count: Signal<number>

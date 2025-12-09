@@ -1,9 +1,10 @@
 import { For, onMount } from "solid-js"
-import { appRegistry, createAppInstance } from "~/os"
+import { createAppInstance } from "~/os"
 import { InformationApp } from "~/os/apps/information"
 import { initFs } from "~/os/fs"
 import { read, write } from "~/os/registry"
 import { getValue } from "~/os/utils"
+import { getInstalledAppIds, getInstalledApps, waitForInstalledApps } from "~/os/apps/programs"
 import { openApp, openApps, waitForWindowHydration } from "~/os/windows/open-windows"
 import { WindowManager } from "~/os/windows/window-manager"
 import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
@@ -13,11 +14,14 @@ const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 const Home = () => {
   onMount(() => {
     void (async () => {
-      await waitForWindowHydration()
       await initFs()
+      await waitForInstalledApps()
+      await waitForWindowHydration()
 
       const hasInformationOpen = openApps.apps.some((w) => w.app instanceof InformationApp)
       if (hasInformationOpen) return
+
+      if (!getInstalledAppIds().has(InformationApp.appId)) return
 
       const alreadyAutolaunched = await read<boolean>(INFO_AUTOLAUNCH_KEY)
       if (alreadyAutolaunched) return
@@ -57,7 +61,7 @@ const Home = () => {
           <StartMenu />
           <div class="soft-glass flex h-10 w-[90vw] items-center justify-center gap-x-3 rounded-2xl px-4 sm:w-[55vw]">
             <TaskbarButtons>
-              <For each={appRegistry}>{(appClass) => <TaskbarButton appClass={appClass} />}</For>
+              <For each={getInstalledApps()}>{(appClass) => <TaskbarButton appClass={appClass} />}</For>
             </TaskbarButtons>
           </div>
           <ClockBar />

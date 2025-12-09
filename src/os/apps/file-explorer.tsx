@@ -1,6 +1,6 @@
 import { createSignal, createResource, createMemo, For, Show, Signal, JSX, Accessor, Resource } from "solid-js"
 import { App } from "~/os"
-import { cn } from "~/os/utils"
+import { cn, fuzzyMatch } from "~/os/utils"
 import {
   Button,
   Separator,
@@ -59,6 +59,7 @@ import {
   parentPath as fsParentPath,
   entryName as fsEntryName,
 } from "~/os/fs"
+import { isProtectedAppId } from "~/os/apps/programs"
 
 const QUICK_ACCESS: { name: string; path: FsPath; icon: typeof HomeIcon }[] = [
   { name: "Home", path: "/", icon: HomeIcon },
@@ -153,11 +154,14 @@ export class FileExplorerApp extends App {
   static appId = "file-explorer"
   static appName = "File Explorer"
   static appIcon = "file-explorer"
+  static appDescription = "Browse files, manage folders, and perform basic file operations."
   static appColor = "yellow"
+  static appProtected = true
 
   id = FileExplorerApp.appId
   name = FileExplorerApp.appName
   icon = FileExplorerApp.appIcon
+  description = FileExplorerApp.appDescription
   color = FileExplorerApp.appColor
 
   defaultSize = { width: 900, height: 600 }
@@ -178,6 +182,9 @@ export class FileExplorerApp extends App {
   private renameDialogOpen: Signal<boolean>
   private newItemName: Signal<string>
   private renameTarget: Signal<FsEntry | null>
+  private deleteConfirmOpen: Signal<boolean>
+  private deleteTarget: Signal<FsEntry | null>
+  private deleteMessage: Signal<string>
 
   private rawEntries: Resource<FsEntry[]>
   private refetchEntries: () => void
@@ -203,6 +210,9 @@ export class FileExplorerApp extends App {
     this.renameDialogOpen = createSignal(false)
     this.newItemName = createSignal("")
     this.renameTarget = createSignal<FsEntry | null>(null)
+    this.deleteConfirmOpen = createSignal(false)
+    this.deleteTarget = createSignal<FsEntry | null>(null)
+    this.deleteMessage = createSignal("")
 
     const [rawEntries, { refetch }] = createResource(
       () => ({ path: this.path[0](), trigger: this.refreshTrigger[0]() }),
@@ -220,10 +230,10 @@ export class FileExplorerApp extends App {
 
     this.entries = createMemo(() => {
       let items = this.rawEntries() ?? []
-      const query = this.searchQuery[0]().toLowerCase()
+      const query = this.searchQuery[0]().trim()
 
       if (query) {
-        items = items.filter((e) => fsEntryName(e.path).toLowerCase().includes(query))
+        items = items.filter((e) => fuzzyMatch(query, fsEntryName(e.path)))
       }
 
       const sorted = [...items].sort((a, b) => {
@@ -370,7 +380,19 @@ export class FileExplorerApp extends App {
     }
   }
 
-  private handleDelete = async (entry: FsEntry) => {
+  private isProgramAppFile = (entry: FsEntry) =>
+    entry.type === "file" &&
+    entry.path.startsWith("/Programs/") &&
+    fsEntryName(entry.path).toLowerCase().endsWith(".app")
+
+  private isProtectedProgramApp = (entry: FsEntry) => {
+    if (!this.isProgramAppFile(entry)) return false
+    const name = fsEntryName(entry.path).toLowerCase()
+    const appId = name.replace(/\.app$/, "")
+    return isProtectedAppId(appId)
+  }
+
+  private performDelete = async (entry: FsEntry) => {
     try {
       await remove(entry.path, { recursive: true })
       this.selectedEntry[1](null)
@@ -378,6 +400,39 @@ export class FileExplorerApp extends App {
     } catch (err) {
       console.error("Failed to delete:", err)
     }
+  }
+
+  private handleDelete = (entry: FsEntry) => {
+    if (this.isProgramAppFile(entry)) {
+      if (this.isProtectedProgramApp(entry)) {
+        this.deleteTarget[1](null)
+        this.deleteMessage[1]("This app is protected and cannot be uninstalled.")
+        this.deleteConfirmOpen[1](true)
+        return
+      }
+
+      this.deleteTarget[1](entry)
+      this.deleteMessage[1](
+        `Uninstall ${fsEntryName(entry.path)}? This removes the app until you reinstall its .app file.`,
+      )
+      this.deleteConfirmOpen[1](true)
+      return
+    }
+
+    void this.performDelete(entry)
+  }
+
+  private confirmDelete = async () => {
+    const target = this.deleteTarget[0]()
+    this.deleteConfirmOpen[1](false)
+    if (!target) return
+    await this.performDelete(target)
+    this.deleteTarget[1](null)
+  }
+
+  private closeDeleteDialog = () => {
+    this.deleteConfirmOpen[1](false)
+    this.deleteTarget[1](null)
   }
 
   private handleCopy = (entry: FsEntry) => {
@@ -507,6 +562,39 @@ export class FileExplorerApp extends App {
               <Button variant="primary" onClick={() => void this.handleCreateFile()}>
                 Create
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <Dialog
+          open={this.deleteConfirmOpen[0]()}
+          onOpenChange={(open) => {
+            this.deleteConfirmOpen[1](open)
+            if (!open) this.deleteTarget[1](null)
+          }}
+        >
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>{this.deleteTarget[0]() ? "Uninstall app" : "Cannot uninstall app"}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>{this.deleteMessage[0]()}</DialogBody>
+            <DialogFooter>
+              <Show
+                when={this.deleteTarget[0]()}
+                fallback={
+                  <Button variant="primary" onClick={this.closeDeleteDialog}>
+                    Close
+                  </Button>
+                }
+              >
+                <Button variant="ghost" onClick={this.closeDeleteDialog}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={() => void this.confirmDelete()}>
+                  Uninstall
+                </Button>
+              </Show>
             </DialogFooter>
           </DialogContent>
         </Dialog>

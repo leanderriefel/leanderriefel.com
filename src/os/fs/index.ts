@@ -97,7 +97,15 @@ const ensureDbOpen = async (): Promise<FsDexie> => {
   return db
 }
 
-export const DEFAULT_FOLDERS: FsPath[] = ["/Desktop", "/Documents", "/Pictures", "/Music", "/Videos", "/Downloads"]
+export const DEFAULT_FOLDERS: FsPath[] = [
+  "/Programs",
+  "/Desktop",
+  "/Documents",
+  "/Pictures",
+  "/Music",
+  "/Videos",
+  "/Downloads",
+]
 
 export const initFs = async () => {
   await ensureDbOpen()

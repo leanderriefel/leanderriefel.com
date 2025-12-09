@@ -1,9 +1,10 @@
 import { createStore } from "solid-js/store"
-import { App, OsWindow, appRegistry, AppClass } from "~/os"
+import { App, OsWindow, AppClass, createAppInstance } from "~/os"
 import { getValue, constrainToViewport } from "../utils/index"
 import { focus, removeFromStack, Focusable } from "~/os/focus"
 import { createEffect, createRoot, createSignal, on } from "solid-js"
 import { read, write } from "~/os/registry"
+import { findInstalledAppByNameOrId, waitForInstalledApps } from "~/os/apps/programs"
 
 const WINDOW_STATE_REGISTRY_KEY = "os_windows_state"
 const LAST_GEOMETRY_REGISTRY_KEY = "os_last_window_geometry"
@@ -74,6 +75,7 @@ const getRememberedWindowGeometry = (appName: string) => lastWindowGeometry[appN
 
 interface SavedWindow {
   id: string
+  appId?: string
   appName: string
   position: { x: number; y: number }
   size: { width: number; height: number }
@@ -83,6 +85,7 @@ interface SavedWindow {
 const hydrateWindowsFromRegistry = async () => {
   if (typeof window === "undefined") return
 
+  await waitForInstalledApps()
   await ensureLastWindowGeometryLoaded()
 
   try {
@@ -91,21 +94,21 @@ const hydrateWindowsFromRegistry = async () => {
       const windows: OsWindow[] = []
 
       savedWindows.forEach((savedWin) => {
-        const AppClass = appRegistry.find((a) => a.appName === savedWin.appName)
-        if (AppClass) {
-          const app = new AppClass()
-          app.id = savedWin.id
+        const FoundAppClass = findInstalledAppByNameOrId(savedWin.appId ?? savedWin.appName)
+        if (!FoundAppClass) return
 
-          const { position, size } = constrainToViewport(savedWin.position, savedWin.size)
+        const app = createAppInstance(FoundAppClass)
+        app.id = savedWin.id
 
-          windows.push({
-            id: savedWin.id,
-            app,
-            display: savedWin.display,
-            position,
-            size,
-          })
-        }
+        const { position, size } = constrainToViewport(savedWin.position, savedWin.size)
+
+        windows.push({
+          id: savedWin.id,
+          app,
+          display: savedWin.display,
+          position,
+          size,
+        })
       })
 
       if (windows.length > 0) {
@@ -142,9 +145,11 @@ const serializeWindowState = (): SavedWindow[] => {
   const result: SavedWindow[] = []
   for (let i = 0; i < apps.length; i++) {
     const w = apps[i]
+    const appClass = w.app.constructor as AppClass
     result.push({
       id: w.id,
-      appName: (w.app.constructor as AppClass).appName,
+      appId: appClass.appId,
+      appName: appClass.appName,
       position: { x: w.position.x, y: w.position.y },
       size: { width: w.size.width, height: w.size.height },
       display: w.display,
@@ -211,9 +216,10 @@ export const closeApp = (app: App | string) => {
   const windowToClose = openApps.apps.find((w) => w.id === appId)
   if (windowToClose) {
     void rememberWindowGeometry(getAppName(windowToClose.app), {
-      position: windowToClose.position,
-      size: windowToClose.size,
+      position: { x: windowToClose.position.x, y: windowToClose.position.y },
+      size: { width: windowToClose.size.width, height: windowToClose.size.height },
     })
+    windowToClose.app.dispose?.()
   }
 
   setOpenApps("apps", (apps) => apps.filter((w) => w.id !== appId))

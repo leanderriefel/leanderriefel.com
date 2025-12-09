@@ -1,10 +1,16 @@
-import { JSX, Signal } from "solid-js"
+import { createRoot, JSX, Signal } from "solid-js"
 
 export abstract class App {
   abstract id: string
   abstract name: Signal<string> | string
   abstract icon: Signal<string> | string
+  abstract description: Signal<string> | string
   abstract render: () => JSX.Element
+  /**
+   * Marks the app as protected from uninstall.
+   * Defaults to false when not set on the subclass.
+   */
+  protectedApp?: boolean
 
   color?: Signal<string> | string
   defaultSize?:
@@ -17,17 +23,23 @@ export abstract class App {
         height: number
       }
 
+  dispose?: () => void
+
   static appId: string
   static appName: string
   static appIcon: string
+  static appDescription: string
   static appColor?: string
+  static appProtected?: boolean
 
   static getMetadata() {
     return {
       id: this.appId,
       name: this.appName,
       icon: this.appIcon,
+      description: this.appDescription,
       color: this.appColor,
+      protected: this.appProtected ?? false,
     }
   }
 }
@@ -51,12 +63,16 @@ export type AppClass = {
   appId: string
   appName: string
   appIcon: string
+  appDescription: string
   appColor?: string
+  appProtected?: boolean
   getMetadata(): {
     id: string
     name: string
     icon: string
+    description: string
     color?: string
+    protected?: boolean
   }
 }
 
@@ -90,5 +106,10 @@ export const getAllAppMetadata = () => {
 }
 
 export const createAppInstance = (AppClass: AppClass): App => {
-  return new AppClass()
+  let app!: App
+  createRoot((disposer) => {
+    app = new AppClass()
+    app.dispose = disposer
+  })
+  return app
 }

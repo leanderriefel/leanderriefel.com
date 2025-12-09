@@ -10,11 +10,14 @@ export class SettingsApp extends App {
   static appId = "settings"
   static appName = "Settings"
   static appIcon = "settings"
+  static appDescription = "Adjust system preferences like color mode."
   static appColor = "blue"
+  static appProtected = true
 
   id = SettingsApp.appId
   name = SettingsApp.appName
   icon = SettingsApp.appIcon
+  description = SettingsApp.appDescription
   color = SettingsApp.appColor
 
   constructor() {
