@@ -1,5 +1,5 @@
-import { createSignal, createSelector, createRoot, Accessor } from "solid-js"
-import { createStore, SetStoreFunction } from "solid-js/store"
+import { createSignal, createSelector, createRoot } from "solid-js"
+import { createStore } from "solid-js/store"
 
 // Types
 export type FocusableId = string
@@ -7,23 +7,15 @@ export type Focusable = FocusableId | { id: FocusableId }
 
 const getId = (item: Focusable): string => (typeof item === "string" ? item : item.id)
 
-// Focus State (wrapped in createRoot to avoid ownerless computations)
-let focusedId: Accessor<string | null>
-let setFocusedId: (value: string | null) => void
-let isFocused: (id: string) => boolean
-let focusStack: { stack: string[] }
-let setFocusStack: SetStoreFunction<{ stack: string[] }>
+const focusState = createRoot(() => {
+  const [focusedId, setFocusedId] = createSignal<string | null>(null)
+  const isFocused = createSelector(focusedId)
+  const [focusStack, setFocusStack] = createStore<{ stack: string[] }>({ stack: [] })
 
-createRoot(() => {
-  const [_focusedId, _setFocusedId] = createSignal<string | null>(null)
-  focusedId = _focusedId
-  setFocusedId = _setFocusedId
-  isFocused = createSelector(focusedId)
-
-  const [_focusStack, _setFocusStack] = createStore<{ stack: string[] }>({ stack: [] })
-  focusStack = _focusStack
-  setFocusStack = _setFocusStack
+  return { focusedId, setFocusedId, isFocused, focusStack, setFocusStack }
 })
+
+const { focusedId, setFocusedId, isFocused, focusStack, setFocusStack } = focusState
 
 export { focusedId, setFocusedId, isFocused, focusStack, setFocusStack }
 

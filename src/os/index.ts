@@ -1,4 +1,10 @@
 import { createRoot, JSX, Signal } from "solid-js"
+import type { FsPath } from "~/os/fs"
+
+export type LaunchContext = {
+  filePath?: FsPath
+  args?: Record<string, unknown>
+}
 
 export abstract class App {
   abstract id: string
@@ -13,6 +19,11 @@ export abstract class App {
   protectedApp?: boolean
 
   color?: Signal<string> | string
+  /**
+   * Extensions (e.g. ".txt") that the app can open.
+   * Use "*" to allow any extension.
+   */
+  supportedFileTypes?: readonly string[]
   defaultSize?:
     | Signal<{
         width: number
@@ -24,6 +35,9 @@ export abstract class App {
       }
 
   dispose?: () => void
+  launchContext?: LaunchContext
+
+  onLaunch?(context: LaunchContext): void
 
   static appId: string
   static appName: string
@@ -31,6 +45,7 @@ export abstract class App {
   static appDescription: string
   static appColor?: string
   static appProtected?: boolean
+  static supportedFileTypes?: readonly string[]
 
   static getMetadata() {
     return {
@@ -40,6 +55,7 @@ export abstract class App {
       description: this.appDescription,
       color: this.appColor,
       protected: this.appProtected ?? false,
+      supportedFileTypes: this.supportedFileTypes ?? [],
     }
   }
 }
@@ -66,6 +82,7 @@ export type AppClass = {
   appDescription: string
   appColor?: string
   appProtected?: boolean
+  supportedFileTypes?: readonly string[]
   getMetadata(): {
     id: string
     name: string
@@ -73,6 +90,7 @@ export type AppClass = {
     description: string
     color?: string
     protected?: boolean
+    supportedFileTypes: readonly string[]
   }
 }
 
@@ -105,11 +123,15 @@ export const getAllAppMetadata = () => {
   return appRegistry.map((AppClass) => AppClass.getMetadata())
 }
 
-export const createAppInstance = (AppClass: AppClass): App => {
+export const createAppInstance = (AppClass: AppClass, context?: LaunchContext): App => {
   let app!: App
   createRoot((disposer) => {
     app = new AppClass()
     app.dispose = disposer
+    if (context) {
+      app.launchContext = context
+      app.onLaunch?.(context)
+    }
   })
   return app
 }

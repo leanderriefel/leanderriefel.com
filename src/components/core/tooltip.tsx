@@ -92,7 +92,9 @@ export const Tooltip = (props: TooltipProps) => {
       disabled={local.disabled}
       {...rest}
     >
-      <TooltipPrimitive.Trigger class={cn("inline-flex", local.class)}>{local.children}</TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Trigger class={cn("inline-flex cursor-pointer", local.class)}>
+        {local.children}
+      </TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content class={cn(tooltipContentVariants({ variant: local.variant }), local.contentClass)}>
           {local.content}

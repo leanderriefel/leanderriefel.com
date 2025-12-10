@@ -1,10 +1,10 @@
-import type { Linter } from "eslint";
+import type { ESLint, Linter } from "eslint";
 
 import js from "@eslint/js";
-import globals from "globals";
-import solidRecommended from "eslint-plugin-solid/configs/recommended";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
+import solid from "eslint-plugin-solid";
+import globals from "globals";
 
 const config: Linter.FlatConfig[] = [
   {
@@ -15,12 +15,10 @@ const config: Linter.FlatConfig[] = [
       ".next",
       ".nuxt",
       ".vinxi",
+      ".vercel",
+      ".output",
       "*.lock",
     ],
-  },
-  {
-    ...js.configs.recommended,
-    files: ["**/*.{js,jsx,ts,tsx}"],
   },
   {
     files: ["**/*.{js,jsx,ts,tsx}"],
@@ -38,14 +36,13 @@ const config: Linter.FlatConfig[] = [
       },
     },
     plugins: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      "@typescript-eslint": tseslint as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(solidRecommended.plugins as any),
+      "@typescript-eslint": tseslint as unknown as ESLint.Plugin,
+      solid: solid as unknown as ESLint.Plugin,
     },
     rules: {
+      ...js.configs.recommended.rules,
       ...tseslint.configs.recommended.rules,
-      ...solidRecommended.rules,
+      ...solid.configs["flat/recommended"].rules,
     },
   },
 ];

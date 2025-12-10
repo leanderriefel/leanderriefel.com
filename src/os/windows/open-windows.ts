@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store"
-import { App, OsWindow, AppClass, createAppInstance } from "~/os"
+import { App, OsWindow, AppClass, createAppInstance, LaunchContext } from "~/os"
 import { getValue, constrainToViewport } from "../utils/index"
 import { focus, removeFromStack, Focusable } from "~/os/focus"
 import { createEffect, createRoot, createSignal, on } from "solid-js"
 import { read, write } from "~/os/registry"
-import { findInstalledAppByNameOrId, waitForInstalledApps } from "~/os/apps/programs"
+import { findInstalledAppByNameOrId, waitForInstalledApps } from "~/os/fs/programs"
 
 const WINDOW_STATE_REGISTRY_KEY = "os_windows_state"
 const LAST_GEOMETRY_REGISTRY_KEY = "os_last_window_geometry"
@@ -12,6 +12,7 @@ const LAST_GEOMETRY_REGISTRY_KEY = "os_last_window_geometry"
 type OpenAppOptions = {
   position?: { x: number; y: number }
   size?: { width: number; height: number }
+  context?: LaunchContext
 }
 
 export const [openApps, setOpenApps] = createStore<{
@@ -243,4 +244,16 @@ export const bringToFront = (item: Focusable) => {
     (d) => (d === "minimized" ? "default" : d),
   )
   focus(item)
+}
+
+export const openAppById = (
+  appId: string,
+  options?: Omit<OpenAppOptions, "context"> & { context?: LaunchContext },
+): boolean => {
+  const AppClass = findInstalledAppByNameOrId(appId)
+  if (!AppClass) return false
+
+  const app = createAppInstance(AppClass, options?.context)
+  openApp(app, options)
+  return true
 }

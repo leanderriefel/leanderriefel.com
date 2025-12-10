@@ -46,7 +46,7 @@ export const ContextMenuTrigger = (props: ContextMenuTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children", "disabled"])
 
   return (
-    <ContextMenuPrimitive.Trigger class={cn(local.class)} disabled={local.disabled} {...rest}>
+    <ContextMenuPrimitive.Trigger class={cn("cursor-pointer", local.class)} disabled={local.disabled} {...rest}>
       {local.children}
     </ContextMenuPrimitive.Trigger>
   )

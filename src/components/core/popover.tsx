@@ -42,7 +42,7 @@ export const PopoverTrigger = (props: PopoverTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <PopoverPrimitive.Trigger class={cn("inline-flex", local.class)} {...rest}>
+    <PopoverPrimitive.Trigger class={cn("inline-flex cursor-pointer", local.class)} {...rest}>
       {local.children}
     </PopoverPrimitive.Trigger>
   )

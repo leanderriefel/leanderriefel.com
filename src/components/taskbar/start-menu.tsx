@@ -8,7 +8,7 @@ import {
 } from "~/components/core"
 import { SettingsIcon } from "lucide-solid"
 import { AppClass, createAppInstance } from "~/os"
-import { getInstalledApps } from "~/os/apps/programs"
+import { getInstalledApps } from "~/os/fs/programs"
 import { openApp } from "~/os/windows/open-windows"
 import { SettingsApp } from "~/os/apps/settings"
 import { OsLogo } from "./os-logo"

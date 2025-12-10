@@ -74,7 +74,7 @@ export const DropdownMenuTrigger = (props: DropdownMenuTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <DropdownMenuPrimitive.Trigger class={cn("inline-flex items-center", local.class)} {...rest}>
+    <DropdownMenuPrimitive.Trigger class={cn("inline-flex cursor-pointer items-center", local.class)} {...rest}>
       {local.children}
     </DropdownMenuPrimitive.Trigger>
   )

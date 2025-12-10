@@ -260,7 +260,7 @@ export const Window = (props: OsWindow) => {
               >
                 <IconButton
                   icon={
-                    props.display === "maximized" ? <Maximize2Icon class="size-3" /> : <SquareIcon class="size-3" />
+                    props.display === "maximized" ? <SquareIcon class="size-3" /> : <Maximize2Icon class="size-3" />
                   }
                   aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
                   variant="success"
