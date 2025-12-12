@@ -22,17 +22,19 @@ export class TextEditorApp extends App {
 
   defaultSize = { width: 700, height: 500 }
 
-  private currentPath: Signal<FsPath | null>
-  private content: Signal<string>
-  private status: Signal<EditorStatus>
-  private errorMessage: Signal<string>
-  private hasUnsavedChanges: Signal<boolean>
-  private openDialogOpen: Signal<boolean>
-  private saveDialogOpen: Signal<boolean>
+  private currentPath!: Signal<FsPath | null>
+  private content!: Signal<string>
+  private status!: Signal<EditorStatus>
+  private errorMessage!: Signal<string>
+  private hasUnsavedChanges!: Signal<boolean>
+  private openDialogOpen!: Signal<boolean>
+  private saveDialogOpen!: Signal<boolean>
 
   constructor() {
     super()
+  }
 
+  onLaunch = (context: LaunchContext) => {
     this.currentPath = createSignal<FsPath | null>(null)
     this.content = createSignal("")
     this.status = createSignal<EditorStatus>("idle")
@@ -40,9 +42,7 @@ export class TextEditorApp extends App {
     this.hasUnsavedChanges = createSignal(false)
     this.openDialogOpen = createSignal(false)
     this.saveDialogOpen = createSignal(false)
-  }
 
-  onLaunch = (context: LaunchContext) => {
     if (context.filePath) {
       void this.loadFile(context.filePath)
     }
@@ -140,19 +140,23 @@ export class TextEditorApp extends App {
   render = () => {
     return (
       <div class="flex h-full flex-col bg-background">
-        <FileDialog
-          open={this.openDialogOpen[0]}
-          onOpenChange={this.openDialogOpen[1]}
-          options={this.getOpenDialogOptions()}
-          onResult={this.handleOpenDialogResult}
-        />
+        <Show when={this.openDialogOpen[0]()}>
+          <FileDialog
+            open={this.openDialogOpen[0]}
+            onOpenChange={this.openDialogOpen[1]}
+            options={this.getOpenDialogOptions()}
+            onResult={this.handleOpenDialogResult}
+          />
+        </Show>
 
-        <FileDialog
-          open={this.saveDialogOpen[0]}
-          onOpenChange={this.saveDialogOpen[1]}
-          options={this.getSaveDialogOptions()}
-          onResult={this.handleSaveDialogResult}
-        />
+        <Show when={this.saveDialogOpen[0]()}>
+          <FileDialog
+            open={this.saveDialogOpen[0]}
+            onOpenChange={this.saveDialogOpen[1]}
+            options={this.getSaveDialogOptions()}
+            onResult={this.handleSaveDialogResult}
+          />
+        </Show>
 
         <Toolbar
           status={this.status[0]}

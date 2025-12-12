@@ -72,13 +72,17 @@ export const FileDialog = (props: FileDialogProps) => {
     setFileName(props.options.defaultFileName ?? "")
   })
 
-  const [rawEntries, { refetch }] = createResource(currentPath, async (path) => {
-    try {
-      return await list(path)
-    } catch {
-      return []
-    }
-  })
+  const [rawEntries, { refetch }] = createResource(
+    currentPath,
+    async (path) => {
+      try {
+        return await list(path)
+      } catch {
+        return []
+      }
+    },
+    { initialValue: [] },
+  )
 
   const entries = createMemo(() => {
     let items = rawEntries() ?? []

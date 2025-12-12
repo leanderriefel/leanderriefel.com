@@ -128,10 +128,9 @@ export const createAppInstance = (AppClass: AppClass, context?: LaunchContext): 
   createRoot((disposer) => {
     app = new AppClass()
     app.dispose = disposer
-    if (context) {
-      app.launchContext = context
-      app.onLaunch?.(context)
-    }
+    const launchContext = context ?? {}
+    app.launchContext = launchContext
+    app.onLaunch?.(launchContext)
   })
   return app
 }

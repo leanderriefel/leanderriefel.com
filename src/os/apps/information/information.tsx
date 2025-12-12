@@ -17,6 +17,12 @@ export class InformationApp extends App {
   color = InformationApp.appColor
   defaultSize = { width: 1000, height: 700 }
 
+  constructor() {
+    super()
+  }
+
+  onLaunch = () => {}
+
   render = () => {
     return (
       <div class="flex size-full items-center justify-center overflow-auto p-6">

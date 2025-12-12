@@ -31,18 +31,20 @@ export class AppStoreApp extends App {
   color = AppStoreApp.appColor
   defaultSize = { width: 900, height: 640 }
 
-  private loading: Signal<boolean>
-  private actioning: Signal<string | null>
-  private confirmOpen: Signal<boolean>
-  private confirmTarget: Signal<{ id: string; name: string } | null>
-  private searchQuery: Signal<string>
-  private filterStatus: Signal<FilterOption>
-  private installedIds: Accessor<Set<string>>
-  private filteredApps: Accessor<AppClass[]>
+  private loading!: Signal<boolean>
+  private actioning!: Signal<string | null>
+  private confirmOpen!: Signal<boolean>
+  private confirmTarget!: Signal<{ id: string; name: string } | null>
+  private searchQuery!: Signal<string>
+  private filterStatus!: Signal<FilterOption>
+  private installedIds!: Accessor<Set<string>>
+  private filteredApps!: Accessor<AppClass[]>
 
   constructor() {
     super()
+  }
 
+  onLaunch = () => {
     this.loading = createSignal(true)
     this.actioning = createSignal<string | null>(null)
     this.confirmOpen = createSignal(false)

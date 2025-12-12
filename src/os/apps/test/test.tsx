@@ -17,14 +17,17 @@ export class TestApp extends App {
   description = TestApp.appDescription
   color = TestApp.appColor
 
-  private count: Signal<number>
-  private message: Signal<string>
-  private isVisible: Signal<boolean>
-  private dialogOpen: Signal<boolean>
-  private darkMode: Signal<boolean>
+  private count!: Signal<number>
+  private message!: Signal<string>
+  private isVisible!: Signal<boolean>
+  private dialogOpen!: Signal<boolean>
+  private darkMode!: Signal<boolean>
 
   constructor() {
     super()
+  }
+
+  onLaunch = () => {
     this.count = createSignal(0)
     this.message = createSignal("UI Components Demo")
     this.isVisible = createSignal(true)

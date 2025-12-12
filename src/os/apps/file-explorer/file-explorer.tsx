@@ -1,5 +1,5 @@
 import { createSignal, createResource, createMemo, Show, Signal, Accessor, Resource, onMount } from "solid-js"
-import { App, createAppInstance } from "~/os"
+import { App, createAppInstance, LaunchContext } from "~/os"
 import { fuzzyMatch } from "~/os/utils"
 import { ContextMenu, ContextMenuTrigger } from "~/components/core"
 import {
@@ -60,38 +60,40 @@ export class FileExplorerApp extends App {
 
   defaultSize = { width: 900, height: 600 }
 
-  private path: Signal<FsPath>
-  private history: Signal<FsPath[]>
-  private historyIndex: Signal<number>
-  private viewMode: Signal<ViewMode>
-  private sortBy: Signal<SortBy>
-  private sortOrder: Signal<SortOrder>
-  private searchQuery: Signal<string>
-  private selectedEntry: Signal<FsPath | null>
-  private sidebarCollapsed: Signal<boolean>
-  private refreshTrigger: Signal<number>
-  private clipboard: Signal<ClipboardItem | null>
-  private newFolderDialogOpen: Signal<boolean>
-  private newFileDialogOpen: Signal<boolean>
-  private renameDialogOpen: Signal<boolean>
-  private newItemName: Signal<string>
-  private renameTarget: Signal<FsEntry | null>
-  private deleteConfirmOpen: Signal<boolean>
-  private deleteTarget: Signal<FsEntry | null>
-  private deleteMessage: Signal<string>
-  private openWithDialogOpen: Signal<boolean>
-  private openWithTarget: Signal<FsEntry | null>
-  private openWithRemember: Signal<boolean>
-  private openWithSelectedApp: Signal<string | null>
+  private path!: Signal<FsPath>
+  private history!: Signal<FsPath[]>
+  private historyIndex!: Signal<number>
+  private viewMode!: Signal<ViewMode>
+  private sortBy!: Signal<SortBy>
+  private sortOrder!: Signal<SortOrder>
+  private searchQuery!: Signal<string>
+  private selectedEntry!: Signal<FsPath | null>
+  private sidebarCollapsed!: Signal<boolean>
+  private refreshTrigger!: Signal<number>
+  private clipboard!: Signal<ClipboardItem | null>
+  private newFolderDialogOpen!: Signal<boolean>
+  private newFileDialogOpen!: Signal<boolean>
+  private renameDialogOpen!: Signal<boolean>
+  private newItemName!: Signal<string>
+  private renameTarget!: Signal<FsEntry | null>
+  private deleteConfirmOpen!: Signal<boolean>
+  private deleteTarget!: Signal<FsEntry | null>
+  private deleteMessage!: Signal<string>
+  private openWithDialogOpen!: Signal<boolean>
+  private openWithTarget!: Signal<FsEntry | null>
+  private openWithRemember!: Signal<boolean>
+  private openWithSelectedApp!: Signal<string | null>
 
-  private rawEntries: Resource<FsEntry[]>
-  private refetchEntries: () => void
-  private entries: Accessor<FsEntry[]>
-  private pathSegments: Accessor<{ name: string; path: FsPath }[]>
+  private rawEntries!: Resource<FsEntry[]>
+  private refetchEntries!: () => void
+  private entries!: Accessor<FsEntry[]>
+  private pathSegments!: Accessor<{ name: string; path: FsPath }[]>
 
   constructor() {
     super()
+  }
 
+  onLaunch = (context: LaunchContext) => {
     this.path = createSignal<FsPath>("/")
     this.history = createSignal<FsPath[]>(["/"])
     this.historyIndex = createSignal(0)
@@ -176,6 +178,8 @@ export class FileExplorerApp extends App {
     })
 
     this.pathSegments = createMemo(() => getPathSegments(this.path[0]()))
+
+    if (context.filePath) this.navigate(context.filePath)
   }
 
   private refresh = () => this.refreshTrigger[1]((t) => t + 1)
@@ -570,4 +574,5 @@ export class FileExplorerApp extends App {
       </div>
     )
   }
+
 }

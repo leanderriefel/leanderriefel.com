@@ -25,6 +25,8 @@ export class SettingsApp extends App {
     super()
   }
 
+  onLaunch = () => {}
+
   render = () => {
     const [mode, setMode] = sharedColorModeSignal
 

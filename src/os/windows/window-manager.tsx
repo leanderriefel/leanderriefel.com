@@ -1,5 +1,5 @@
 import { XIcon, MinusIcon, SquareIcon, Maximize2Icon, CopyIcon } from "lucide-solid"
-import { For, createSignal, onCleanup, onMount } from "solid-js"
+import { For, Suspense, createSignal, onCleanup, onMount } from "solid-js"
 import { OsWindow, createAppInstance } from "~/os"
 import {
   bringToFront,
@@ -284,7 +284,17 @@ export const Window = (props: OsWindow) => {
             </div>
           </div>
         </ContextMenuTrigger>
-        <div class="@container min-h-0 w-full overflow-auto rounded-b-xl">{props.app.render()}</div>
+        <div class="@container min-h-0 w-full overflow-auto rounded-b-xl">
+          <Suspense
+            fallback={
+              <div class="flex h-full w-full items-center justify-center bg-background text-xs text-muted-foreground">
+                Loading…
+              </div>
+            }
+          >
+            {props.app.render()}
+          </Suspense>
+        </div>
 
         {/* Edges */}
         <div
