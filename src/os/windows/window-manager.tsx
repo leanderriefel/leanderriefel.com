@@ -214,11 +214,11 @@ export const Window = (props: OsWindow) => {
   return (
     <ContextMenu>
       <div
-        class={cn("absolute h-full grid-rows-[auto_1fr] border backdrop-blur-2xl", {
+        class={cn("absolute h-full grid-rows-[auto_1fr] border", {
           hidden: props.display === "minimized",
           grid: props.display !== "minimized",
-          "bg-background shadow-xl": isFocused(props.id),
-          "bg-background/80 shadow-md": !isFocused(props.id),
+          "shadow-xl": isFocused(props.id),
+          "shadow-md": !isFocused(props.id),
           "rounded-none": props.display !== "default",
           "rounded-xl": props.display === "default",
         })}
@@ -234,7 +234,11 @@ export const Window = (props: OsWindow) => {
         <ContextMenuTrigger class="contents">
           <div
             class={cn(
-              "flex h-10 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl border-b",
+              "flex h-10 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl border-b backdrop-blur-2xl",
+              {
+                "bg-background": isFocused(props.id),
+                "bg-background/75": !isFocused(props.id),
+              },
             )}
             onMouseDown={handleMouseDown}
           >

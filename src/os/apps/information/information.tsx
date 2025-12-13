@@ -25,7 +25,7 @@ export class InformationApp extends App {
 
   render = () => {
     return (
-      <div class="flex size-full items-center justify-center overflow-auto p-6">
+      <div class="flex size-full items-center justify-center overflow-auto bg-background p-6">
         <AboutContent />
       </div>
     )

@@ -31,7 +31,7 @@ export class SettingsApp extends App {
     const [mode, setMode] = sharedColorModeSignal
 
     return (
-      <div class="h-full space-y-4 overflow-auto p-6">
+      <div class="h-full space-y-4 overflow-auto bg-background p-6">
         <h2 class="text-lg font-bold text-foreground @sm:text-xl @md:text-2xl">Settings</h2>
         <div class="flex flex-col gap-4">
           <ColorModeSelect mode={mode} setMode={setMode} />

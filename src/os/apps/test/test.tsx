@@ -43,7 +43,7 @@ export class TestApp extends App {
     const [darkMode, setDarkMode] = this.darkMode
 
     return (
-      <div class="h-full space-y-4 overflow-auto p-6">
+      <div class="h-full space-y-4 overflow-auto bg-background p-6">
         <h2 class="text-lg font-bold text-foreground @sm:text-xl @md:text-2xl">{message()}</h2>
 
         <BadgeRow />
