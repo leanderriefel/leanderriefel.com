@@ -1,4 +1,14 @@
-import { createSignal, createResource, createMemo, Show, Signal, Accessor, Resource, onMount } from "solid-js"
+import {
+  createSignal,
+  createResource,
+  createMemo,
+  Show,
+  Signal,
+  Accessor,
+  Resource,
+  onMount,
+  createEffect,
+} from "solid-js"
 import { App, createAppInstance, LaunchContext } from "~/os"
 import { fuzzyMatch } from "~/os/utils"
 import { ContextMenu, ContextMenuTrigger } from "~/components/core"
@@ -13,6 +23,8 @@ import {
   rename,
   parentPath as fsParentPath,
   entryName as fsEntryName,
+  DirEntry,
+  subscribe,
 } from "~/os/fs"
 import { isProtectedAppId, getInstalledApps, waitForInstalledApps, refreshInstalledApps } from "~/os/fs/programs"
 import {
@@ -133,6 +145,14 @@ export class FileExplorerApp extends App {
         }
       },
     )
+
+    createEffect(() => {
+      const unsubscribe = subscribe<DirEntry>(this.path[0](), () => {
+        refetch()
+      })
+      return () => unsubscribe()
+    })
+
     // eslint-disable-next-line solid/reactivity
     this.rawEntries = rawEntries
     this.refetchEntries = () => void refetch()
@@ -574,5 +594,4 @@ export class FileExplorerApp extends App {
       </div>
     )
   }
-
 }

@@ -8,6 +8,7 @@ import { getInstalledAppIds, getInstalledApps, waitForInstalledApps } from "~/os
 import { openApp, openApps, waitForWindowHydration } from "~/os/windows/open-windows"
 import { WindowManager } from "~/os/windows/window-manager"
 import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
+import { Desktop } from "~/os/desktop"
 
 const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 
@@ -40,7 +41,7 @@ const Home = () => {
 
   return (
     <div class="relative h-screen w-screen overflow-hidden bg-background selection:bg-primary/20">
-      <div class="relative min-h-screen w-full">
+      <div class="relative h-dvh w-dvw">
         <div
           class="absolute inset-0 z-0"
           style={{
@@ -53,6 +54,8 @@ const Home = () => {
             `,
           }}
         />
+
+        <Desktop />
 
         <WindowManager />
 
