@@ -6,8 +6,8 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss() as PluginOption],
   },
-  ssr: false,
   server: {
-    preset: "vercel",
+    // eslint-disable-next-line no-undef
+    preset: process.env["VERCEL"] ? "vercel" : "node-server",
   },
 })

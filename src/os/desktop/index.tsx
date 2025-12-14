@@ -6,7 +6,7 @@ export const Desktop = () => {
     return await list("/Desktop")
   })
 
-  let unsubscribe: () => void
+  let unsubscribe: (() => void) | undefined
 
   onMount(async () => {
     unsubscribe = subscribe<DirEntry>("/Desktop", () => {
@@ -15,7 +15,7 @@ export const Desktop = () => {
   })
 
   onCleanup(() => {
-    unsubscribe()
+    unsubscribe?.()
   })
 
   return (
