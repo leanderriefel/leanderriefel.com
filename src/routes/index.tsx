@@ -11,12 +11,14 @@ import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components
 import { Desktop } from "~/os/desktop"
 import { clientOnly } from "@solidjs/start"
 
+import { initRegistry } from "~/os/registry"
+
 const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 
 function Home() {
   onMount(() => {
     void (async () => {
-      await initFs()
+      await Promise.all([initFs(), initRegistry()])
       await waitForInstalledApps()
       await waitForWindowHydration()
 
