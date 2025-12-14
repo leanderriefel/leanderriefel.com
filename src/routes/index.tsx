@@ -1,3 +1,4 @@
+import { clientOnly } from "@solidjs/start"
 import { For, onMount } from "solid-js"
 import { createAppInstance } from "~/os"
 import { InformationApp } from "~/os/apps/information"
@@ -12,7 +13,7 @@ import { Desktop } from "~/os/desktop"
 
 const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 
-const Home = () => {
+function Home() {
   onMount(() => {
     void (async () => {
       await initFs()
@@ -74,4 +75,4 @@ const Home = () => {
   )
 }
 
-export default Home
+export default clientOnly(async () => ({ default: Home }), { lazy: true })

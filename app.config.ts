@@ -6,6 +6,7 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss() as PluginOption],
   },
+  ssr: false,
   server: {
     preset: "vercel",
   },
