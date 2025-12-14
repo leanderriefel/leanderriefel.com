@@ -1,4 +1,3 @@
-import { clientOnly } from "@solidjs/start"
 import { For, onMount } from "solid-js"
 import { createAppInstance } from "~/os"
 import { InformationApp } from "~/os/apps/information"
@@ -10,6 +9,7 @@ import { openApp, openApps, waitForWindowHydration } from "~/os/windows/open-win
 import { WindowManager } from "~/os/windows/window-manager"
 import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
 import { Desktop } from "~/os/desktop"
+import { clientOnly } from "@solidjs/start"
 
 const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 

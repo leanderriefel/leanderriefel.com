@@ -38,6 +38,7 @@ export interface DirEntry extends BaseEntry {
 export interface LinkEntry extends BaseEntry {
   type: "link"
   target: FsPath
+  modified: number
 }
 
 export type FsEntry = FileEntry | DirEntry | LinkEntry
@@ -68,6 +69,15 @@ type RemoveOptions = {
   recursive?: boolean
 }
 
+type MoveOptions = {
+  overwrite?: boolean
+}
+
+type CopyOptions = {
+  overwrite?: boolean
+  followSymlinks?: boolean
+}
+
 class FsDexie extends Dexie {
   meta!: Table<StoredEntry, string>
   chunks!: Table<StoredChunk, string>
@@ -81,7 +91,11 @@ class FsDexie extends Dexie {
   }
 }
 
-const ensureClient = () => {
+// -----------------------------------------------------------------------------
+// Internal Helpers (Hoisted)
+// -----------------------------------------------------------------------------
+
+function ensureClient() {
   if (typeof indexedDB === "undefined") {
     throw new Error("IndexedDB is not available in this environment")
   }
@@ -89,7 +103,7 @@ const ensureClient = () => {
 
 const db = new FsDexie()
 
-const ensureDbOpen = async (): Promise<FsDexie> => {
+async function ensureDbOpen(): Promise<FsDexie> {
   ensureClient()
   if (!db.isOpen()) {
     await db.open()
@@ -97,122 +111,7 @@ const ensureDbOpen = async (): Promise<FsDexie> => {
   return db
 }
 
-/**
- * Default top-level folders created during {@link initFs}.
- */
-export const DEFAULT_FOLDERS: FsPath[] = [
-  "/Programs",
-  "/Desktop",
-  "/Documents",
-  "/Pictures",
-  "/Music",
-  "/Videos",
-  "/Downloads",
-]
-
-const subscribers = new Map<FsPath, Map<string, (entry: FsEntry | undefined) => void>>()
-
-/**
- * Subscribe to changes for a specific path.
- *
- * Subscribers are notified whenever {@link notifySubscribers} is called for that path.
- *
- * @typeParam T - The expected entry type for the subscription callback (e.g. FileEntry, DirEntry).
- * @param path - Path to subscribe to.
- * @param callback - Called with the latest entry (or `undefined` if removed or missing).
- * @returns A function that unsubscribes this callback.
- */
-export const subscribe = <T extends FsEntry>(path: FsPath, callback: (entry: T | undefined) => void) => {
-  const key = crypto.randomUUID()
-
-  if (!subscribers.has(path)) {
-    subscribers.set(path, new Map())
-  }
-  subscribers.get(path)!.set(key, callback as (entry: FsEntry | undefined) => void)
-
-  return () => {
-    const pathSubscribers = subscribers.get(path)
-
-    if (pathSubscribers) {
-      pathSubscribers.delete(key)
-
-      if (pathSubscribers.size === 0) {
-        subscribers.delete(path)
-      }
-    }
-  }
-}
-
-const notifySubscribers = <T extends FsEntry>(path: FsPath, entry: T | undefined) => {
-  const pathSubscribers = subscribers.get(path)
-
-  if (pathSubscribers) {
-    for (const callback of pathSubscribers.values()) {
-      callback(entry)
-    }
-  }
-}
-
-/**
- * Finds all symlinks that point to the given target path.
- *
- * @param targetPath - The path that symlinks might be pointing to.
- * @returns Array of symlink entries that have this target.
- */
-const findSymlinksToTarget = async (targetPath: FsPath): Promise<StoredEntry[]> => {
-  const database = await ensureDbOpen()
-  const allEntries = await database.meta.toArray()
-  return allEntries.filter(
-    (entry): entry is StoredEntry & { type: "link" } =>
-      entry.type === "link" && normalizePath(entry.target) === targetPath,
-  )
-}
-
-const notifyPathChanged = async (inputPath: FsPath) => {
-  const path = normalizePath(inputPath)
-
-  const { resolved, entry } = await resolveLink(path)
-  notifySubscribers(path, entry as FsEntry | undefined)
-
-  // If this is a symlink, also notify the resolved target
-  if (resolved !== path) {
-    notifySubscribers(resolved, entry as FsEntry | undefined)
-  }
-
-  // Notify parent directory (for listing updates)
-  const p = parentPath(path)
-  if (p !== path) {
-    const parentEntry = await getEntryRaw(p)
-    notifySubscribers(p, parentEntry as FsEntry | undefined)
-  }
-
-  // Reverse symlink notification: notify all symlinks pointing to this path
-  const symlinksToThis = await findSymlinksToTarget(path)
-  for (const symlinkEntry of symlinksToThis) {
-    notifySubscribers(symlinkEntry.path, entry as FsEntry | undefined)
-  }
-}
-
-/**
- * Initializes the filesystem database and ensures {@link DEFAULT_FOLDERS} exist.
- *
- * @returns Resolves once the DB is open and default folders are present.
- */
-export const initFs = async () => {
-  await ensureDbOpen()
-  await ensureDefaultFolders()
-}
-
-const ensureDefaultFolders = async () => {
-  for (const folderPath of DEFAULT_FOLDERS) {
-    const existing = await getEntry(folderPath)
-    if (!existing) {
-      await mkdir(folderPath, { parents: true })
-    }
-  }
-}
-
-const normalizePath = (input: string): FsPath => {
+function normalizePath(input: string): FsPath {
   const raw = input.trim()
   if (raw === "" || raw === "/") return "/"
 
@@ -230,16 +129,6 @@ const normalizePath = (input: string): FsPath => {
   return `/${stack.join("/")}` as FsPath
 }
 
-/**
- * Returns the parent directory path.
- *
- * - `"/"` -> `"/"`
- * - `"/a"` -> `"/"`
- * - `"/a/b"` -> `"/a"`
- *
- * @param path - Input path.
- * @returns The parent path.
- */
 export const parentPath = (path: FsPath): FsPath => {
   if (path === "/") return "/"
   const idx = path.lastIndexOf("/")
@@ -247,16 +136,6 @@ export const parentPath = (path: FsPath): FsPath => {
   return (path.slice(0, idx) || "/") as FsPath
 }
 
-/**
- * Returns the last path segment (basename).
- *
- * - `"/"` -> `""`
- * - `"/a"` -> `"a"`
- * - `"/a/b"` -> `"b"`
- *
- * @param path - Input path.
- * @returns The entry name (basename).
- */
 export const entryName = (path: FsPath): string => {
   if (path === "/") return ""
   const idx = path.lastIndexOf("/")
@@ -265,163 +144,53 @@ export const entryName = (path: FsPath): string => {
 
 const chunkKey = (path: FsPath, index: number) => `${path}::${index.toString().padStart(8, "0")}`
 
-/**
- * Reads an entry from the metadata store by path.
- *
- * @param path - Entry path.
- * @returns The stored entry, or `undefined` if it does not exist.
- */
-export const getEntry = async (path: FsPath): Promise<StoredEntry | undefined> => {
-  const database = await ensureDbOpen()
-  return database.meta.get(path)
-}
+const subscribers = new Map<FsPath, Map<string, (entry: FsEntry | undefined) => void>>()
 
-/**
- * Inserts or updates an entry in the metadata store.
- *
- * @param entry - Entry to persist.
- * @returns Resolves when the write is committed.
- */
-export const putEntry = async (entry: StoredEntry) => {
-  const database = await ensureDbOpen()
-  await database.meta.put(entry)
-}
+function notifySubscribers<T extends FsEntry>(path: FsPath, entry: T | undefined) {
+  const pathSubscribers = subscribers.get(path)
 
-/**
- * Deletes an entry from the metadata store by path.
- *
- * This does not delete file chunks; use {@link deleteChunks} if needed.
- *
- * @param path - Entry path.
- * @returns Resolves when deletion is committed.
- */
-export const deleteEntry = async (path: FsPath) => {
-  const database = await ensureDbOpen()
-  await database.meta.delete(path)
-}
-
-/**
- * Lists direct children of a directory (by `parent` field).
- *
- * @param dir - Directory path.
- * @returns Array of stored entries that have `parent === dir`.
- */
-export const getChildren = async (dir: FsPath): Promise<StoredEntry[]> => {
-  const database = await ensureDbOpen()
-  const children = await database.meta.where("parent").equals(dir).toArray()
-  return children ?? []
-}
-
-/**
- * Deletes all stored file chunks for a given file path.
- *
- * @param path - File path whose chunks should be removed.
- * @returns Resolves when deletion is committed.
- */
-export const deleteChunks = async (path: FsPath) => {
-  const database = await ensureDbOpen()
-  await database.chunks.where("path").equals(path).delete()
-}
-
-/**
- * Inserts or updates a single chunk record.
- *
- * @param chunk - Chunk record to persist.
- * @returns Resolves when the write is committed.
- */
-export const putChunk = async (chunk: StoredChunk) => {
-  const database = await ensureDbOpen()
-  await database.chunks.put(chunk)
-}
-
-/**
- * Reads all chunks for a file path, sorted by chunk index.
- *
- * @param path - File path.
- * @returns Chunk records in ascending index order.
- */
-export const getChunks = async (path: FsPath): Promise<StoredChunk[]> => {
-  const database = await ensureDbOpen()
-  const chunks = await database.chunks.where("path").equals(path).sortBy("index")
-  return chunks ?? []
-}
-
-/**
- * Maximum number of symlink hops to follow before detecting a cycle.
- */
-const MAX_SYMLINK_DEPTH = 40
-
-/**
- * Resolves symlinks fully, following chains until a non-link entry is found.
- *
- * Includes cycle detection to prevent infinite loops.
- *
- * @param path - Path to resolve.
- * @param maxDepth - Maximum number of hops (defaults to {@link MAX_SYMLINK_DEPTH}).
- * @returns Object containing `resolved` path and `entry` at that resolved path.
- * @throws If a symlink cycle is detected.
- */
-export const resolveLinkFully = async (
-  path: FsPath,
-  maxDepth: number = MAX_SYMLINK_DEPTH,
-): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
-  const visited = new Set<FsPath>()
-  let currentPath = normalizePath(path)
-
-  for (let depth = 0; depth < maxDepth; depth++) {
-    if (visited.has(currentPath)) {
-      throw new Error(`Symlink cycle detected at ${currentPath}`)
+  if (pathSubscribers) {
+    for (const callback of pathSubscribers.values()) {
+      callback(entry)
     }
-    visited.add(currentPath)
+  }
+}
 
-    const entry = await getEntry(currentPath)
-    if (!entry) return { resolved: currentPath, entry: undefined }
-    if (entry.type !== "link") return { resolved: currentPath, entry }
+async function notifyPathChanged(inputPath: FsPath) {
+  const path = normalizePath(inputPath)
 
-    currentPath = normalizePath(entry.target)
+  const { resolved, entry } = await _resolveLink(path)
+  notifySubscribers(path, entry as FsEntry | undefined)
+
+  // If this is a symlink, also notify the resolved target
+  if (resolved !== path) {
+    notifySubscribers(resolved, entry as FsEntry | undefined)
   }
 
-  throw new Error(`Symlink chain too deep (exceeded ${maxDepth} hops) starting from ${path}`)
+  // Notify parent directory (for listing updates)
+  const p = parentPath(path)
+  if (p !== path) {
+    const parentEntry = await _getEntry(p)
+    notifySubscribers(p, parentEntry as FsEntry | undefined)
+  }
+
+  // Reverse symlink notification: notify all symlinks pointing to this path
+  const symlinksToThis = await findSymlinksToTarget(path)
+  for (const symlinkEntry of symlinksToThis) {
+    notifySubscribers(symlinkEntry.path, entry as FsEntry | undefined)
+  }
 }
 
-/**
- * Resolves symlinks fully, following chains until a non-link entry is found.
- *
- * This is an alias for {@link resolveLinkFully} for convenience.
- *
- * @param path - Path to resolve.
- * @returns Object containing `resolved` path and `entry` at that resolved path.
- */
-export const resolveLink = async (path: FsPath): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
-  return resolveLinkFully(path)
+async function findSymlinksToTarget(targetPath: FsPath): Promise<StoredEntry[]> {
+  const database = await ensureDbOpen()
+  const allEntries = await database.meta.toArray()
+  return allEntries.filter(
+    (entry): entry is StoredEntry & { type: "link" } =>
+      entry.type === "link" && normalizePath(entry.target) === targetPath,
+  )
 }
 
-/**
- * Resolves only a single symlink hop (does not follow chains).
- *
- * @param path - Path to resolve.
- * @returns Object containing `resolved` path (one hop) and `entry` at that path.
- */
-export const resolveLinkSingle = async (
-  path: FsPath,
-): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
-  const entry = await getEntry(path)
-  if (!entry) return { resolved: path, entry: undefined }
-  if (entry.type !== "link") return { resolved: path, entry }
-
-  const targetPath = normalizePath(entry.target)
-  const targetEntry = await getEntry(targetPath)
-  return { resolved: targetPath, entry: targetEntry }
-}
-
-/**
- * Updates all symlinks that point to `oldTarget` to point to `newTarget`.
- *
- * @param oldTarget - The old target path.
- * @param newTarget - The new target path.
- * @returns The number of symlinks updated.
- */
-const updateSymlinksPointingTo = async (oldTarget: FsPath, newTarget: FsPath): Promise<number> => {
+async function updateSymlinksPointingTo(oldTarget: FsPath, newTarget: FsPath): Promise<number> {
   const symlinks = await findSymlinksToTarget(oldTarget)
   const database = await ensureDbOpen()
 
@@ -437,163 +206,67 @@ const updateSymlinksPointingTo = async (oldTarget: FsPath, newTarget: FsPath): P
   return symlinks.length
 }
 
-/**
- * Checks if a path exists (resolving symlinks).
- *
- * @param inputPath - Path to check.
- * @returns `true` if the path exists (after resolving symlinks), `false` otherwise.
- */
-export const exists = async (inputPath: FsPath): Promise<boolean> => {
-  const path = normalizePath(inputPath)
-  try {
-    const { entry } = await resolveLinkFully(path)
-    return entry !== undefined
-  } catch {
-    // Cycle detection throws, treat as non-existent
-    return false
-  }
-}
+// -----------------------------------------------------------------------------
+// Internal Core Operations (No Init Check)
+// -----------------------------------------------------------------------------
 
-/**
- * Checks if a path exists without resolving symlinks.
- *
- * @param inputPath - Path to check.
- * @returns `true` if the path exists (including broken symlinks), `false` otherwise.
- */
-export const lexists = async (inputPath: FsPath): Promise<boolean> => {
-  const path = normalizePath(inputPath)
-  const entry = await getEntryRaw(path)
-  return entry !== undefined
-}
-
-/**
- * Reads an entry from the metadata store without link resolution.
- *
- * @param path - Entry path.
- * @returns The stored entry, or `undefined` if it does not exist.
- */
-export const getEntryRaw = async (path: FsPath): Promise<StoredEntry | undefined> => {
+async function _getEntry(path: FsPath): Promise<StoredEntry | undefined> {
   const database = await ensureDbOpen()
   return database.meta.get(path)
 }
 
-/**
- * Shared UTF-8 encoder used by {@link toAsyncIterable} when the input is a string.
- */
-export const encoder = new TextEncoder()
+async function _getEntryRaw(path: FsPath): Promise<StoredEntry | undefined> {
+  const database = await ensureDbOpen()
+  return database.meta.get(path)
+}
 
-/**
- * Converts supported file content inputs into an async iterable of byte chunks.
- *
- * @param input - File content: string, ArrayBuffer, Uint8Array, Blob, ReadableStream, or AsyncIterable of Uint8Array.
- * @param chunkSize - Chunk size used for string/ArrayBuffer/Uint8Array slicing.
- * @returns An async generator yielding Uint8Array chunks.
- */
-export const toAsyncIterable = async function* (
-  input: FileContent,
-  chunkSize: number,
-): AsyncGenerator<Uint8Array, void, unknown> {
-  if (typeof input === "string") {
-    const data = encoder.encode(input)
-    yield* sliceBuffer(data, chunkSize)
-    return
-  }
+async function _getChildren(dir: FsPath): Promise<StoredEntry[]> {
+  const database = await ensureDbOpen()
+  const children = await database.meta.where("parent").equals(dir).toArray()
+  return children ?? []
+}
 
-  if (input instanceof Uint8Array) {
-    yield* sliceBuffer(input, chunkSize)
-    return
-  }
+const MAX_SYMLINK_DEPTH = 40
 
-  if (input instanceof ArrayBuffer) {
-    yield* sliceBuffer(new Uint8Array(input), chunkSize)
-    return
-  }
+async function _resolveLinkFully(
+  path: FsPath,
+  maxDepth: number = MAX_SYMLINK_DEPTH,
+): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> {
+  const visited = new Set<FsPath>()
+  let currentPath = normalizePath(path)
 
-  if (input instanceof Blob) {
-    const stream = input.stream()
-    for await (const chunk of stream as unknown as AsyncIterable<Uint8Array>) {
-      yield chunk
+  for (let depth = 0; depth < maxDepth; depth++) {
+    if (visited.has(currentPath)) {
+      throw new Error(`Symlink cycle detected at ${currentPath}`)
     }
-    return
+    visited.add(currentPath)
+
+    const entry = await _getEntry(currentPath)
+    if (!entry) return { resolved: currentPath, entry: undefined }
+    if (entry.type !== "link") return { resolved: currentPath, entry }
+
+    currentPath = normalizePath(entry.target)
   }
 
-  if (isReadableStream(input)) {
-    for await (const chunk of readableStreamToAsyncIterable(input)) {
-      yield chunk
-    }
-    return
-  }
-
-  for await (const chunk of input as AsyncIterable<Uint8Array>) {
-    yield chunk
-  }
+  throw new Error(`Symlink chain too deep (exceeded ${maxDepth} hops) starting from ${path}`)
 }
 
-/**
- * Slices a Uint8Array into subarrays of at most `chunkSize`.
- *
- * @param data - Source byte array.
- * @param chunkSize - Maximum chunk size in bytes.
- * @returns A sync generator yielding Uint8Array views into `data`.
- */
-export const sliceBuffer = function* (data: Uint8Array, chunkSize: number) {
-  for (let offset = 0; offset < data.byteLength; offset += chunkSize) {
-    yield data.subarray(offset, Math.min(offset + chunkSize, data.byteLength))
-  }
+async function _resolveLink(path: FsPath): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> {
+  return _resolveLinkFully(path)
 }
 
-/**
- * Type guard for `ReadableStream<Uint8Array>`.
- *
- * @param value - Value to test.
- * @returns `true` if the value looks like a ReadableStream (has `getReader()`), otherwise `false`.
- */
-export const isReadableStream = (value: unknown): value is ReadableStream<Uint8Array> => {
-  return typeof value === "object" && value !== null && typeof (value as ReadableStream).getReader === "function"
-}
-
-/**
- * Converts a `ReadableStream<Uint8Array>` into an `AsyncIterable<Uint8Array>`.
- *
- * @param stream - ReadableStream to consume.
- * @returns An async generator yielding Uint8Array chunks from the stream.
- */
-export const readableStreamToAsyncIterable = async function* (stream: ReadableStream<Uint8Array>) {
-  const reader = stream.getReader()
-  try {
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      if (value) yield value
-    }
-  } finally {
-    reader.releaseLock()
-  }
-}
-
-/**
- * Ensures that a directory exists at `path`.
- *
- * If the directory is missing, it is created. If `parents` is true, parent directories are created as needed.
- * Resolves symlinks when checking for existing directories.
- * Throws if the path exists and is not a directory.
- *
- * @param path - Directory path to ensure.
- * @param options.parents - If true, recursively create missing parents.
- * @returns Resolves when the directory exists.
- */
-export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean }) => {
+async function _ensureDirExists(path: FsPath, { parents }: { parents?: boolean }) {
   if (path === "/") return
 
   // Resolve symlinks to check if the path already exists as a directory
-  const { entry: existing } = await resolveLinkFully(path)
+  const { entry: existing } = await _resolveLinkFully(path)
   if (existing) {
     if (existing.type !== "dir") throw new Error(`Path ${path} exists and is not a directory`)
     return
   }
 
   // Check if there's a broken symlink at this path
-  const rawEntry = await getEntryRaw(path)
+  const rawEntry = await _getEntryRaw(path)
   if (rawEntry && rawEntry.type === "link") {
     throw new Error(`Path ${path} is a broken symlink`)
   }
@@ -601,10 +274,10 @@ export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boo
   const parent = parentPath(path)
   if (parent !== "/") {
     // Resolve symlinks in parent path
-    const { entry: parentEntry, resolved: parentResolved } = await resolveLinkFully(parent)
+    const { entry: parentEntry, resolved: parentResolved } = await _resolveLinkFully(parent)
     if (!parentEntry) {
       if (!parents) throw new Error(`Parent directory ${parent} does not exist`)
-      await ensureDirExists(parent, { parents: true })
+      await _ensureDirExists(parent, { parents: true })
     } else if (parentEntry.type !== "dir") {
       throw new Error(`Parent path ${parent} (resolved to ${parentResolved}) is not a directory`)
     }
@@ -617,160 +290,35 @@ export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boo
     type: "dir",
     created: now,
   }
-  await putEntry(dir)
+  const database = await ensureDbOpen()
+  await database.meta.put(dir)
 }
 
-/**
- * Creates a directory.
- *
- * This normalizes the input path and creates the directory if missing.
- * If `parents` is true, missing parent directories are created.
- *
- * @param inputPath - Directory path.
- * @param options.parents - If true, recursively create missing parents.
- * @returns Resolves when the directory exists.
- */
-export const mkdir = async (inputPath: FsPath, options: { parents?: boolean } = {}) => {
+async function _mkdir(inputPath: FsPath, options: { parents?: boolean } = {}) {
   const path = normalizePath(inputPath)
   if (path === "/") return
-  await ensureDirExists(path, { parents: options.parents })
+  await _ensureDirExists(path, { parents: options.parents })
   await notifyPathChanged(path)
 }
 
-/**
- * Creates a symlink entry at `linkPath` pointing to `targetPath`.
- *
- * - Requires the parent directory of the link to exist (or be created if `parents` is true).
- * - Disallows creating symlinks at root (`"/"`).
- * - Disallows linking to another symlink.
- *
- * @param linkPath - Where the symlink entry should be created.
- * @param targetPath - Target path the link points to.
- * @param options.parents - If true, create missing parent directories for `linkPath`.
- * @returns Resolves when the symlink is created.
- */
-export const symlink = async (linkPath: FsPath, targetPath: FsPath, options: { parents?: boolean } = {}) => {
-  const link = normalizePath(linkPath)
-  const target = normalizePath(targetPath)
-
-  if (link === "/") throw new Error("Cannot create symlink at root")
-
-  const parent = parentPath(link)
-  await ensureDirExists(parent, { parents: options.parents ?? false })
-
-  const existingLink = await getEntry(link)
-  if (existingLink) {
-    if (existingLink.type === "dir") throw new Error(`Cannot create symlink, ${link} is a directory`)
-    if (existingLink.type === "file") throw new Error(`Cannot create symlink, ${link} is a file`)
-    throw new Error(`Symlink already exists at ${link}`)
-  }
-
-  const targetEntry = await getEntryRaw(target)
-  if (targetEntry && targetEntry.type === "link") {
-    throw new Error(`Cannot create symlink to another symlink (${target})`)
-  }
-
-  const now = Date.now()
-  const linkEntry: StoredEntry = {
-    path: link,
-    parent,
-    type: "link",
-    target,
-    created: now,
-  }
-  await putEntry(linkEntry)
-  await notifyPathChanged(link)
+async function _getChunks(path: FsPath): Promise<StoredChunk[]> {
+  const database = await ensureDbOpen()
+  const chunks = await database.chunks.where("path").equals(path).sortBy("index")
+  return chunks ?? []
 }
 
-/**
- * Reads a symlink target without resolving it.
- *
- * @param inputPath - Path expected to be a symlink.
- * @returns The stored target path, or `undefined` if the entry does not exist.
- * @throws If the entry exists but is not a symlink.
- */
-export const readlink = async (inputPath: FsPath): Promise<FsPath | undefined> => {
-  const path = normalizePath(inputPath)
-  const entry = await getEntryRaw(path)
-  if (!entry) return undefined
-  if (entry.type !== "link") throw new Error(`${path} is not a symlink`)
-  return entry.target
-}
-
-/**
- * Returns metadata for a path, resolving a single symlink hop if present.
- *
- * @param inputPath - Path to stat.
- * @returns The resolved entry, or `undefined` if it does not exist.
- */
-export const stat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
-  const path = normalizePath(inputPath)
-  const { entry } = await resolveLink(path)
-  return entry ?? undefined
-}
-
-/**
- * Returns metadata for a path without resolving symlinks.
- *
- * @param inputPath - Path to lstat.
- * @returns The raw entry, or `undefined` if it does not exist.
- */
-export const lstat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
-  const path = normalizePath(inputPath)
-  const entry = await getEntryRaw(path)
-  return entry ?? undefined
-}
-
-/**
- * Lists directory contents (direct children), sorted by basename.
- *
- * If `inputPath` is a symlink, it is resolved and the target directory is listed.
- *
- * @param inputPath - Directory path to list. Defaults to `"/"`.
- * @returns Array of entries under the directory.
- * @throws If the directory does not exist or the path is not a directory.
- */
-export const list = async (inputPath: FsPath = "/"): Promise<FsEntry[]> => {
-  const path = normalizePath(inputPath)
-  let targetPath = path
-
-  if (path !== "/") {
-    const { resolved, entry } = await resolveLink(path)
-    if (!entry) throw new Error(`Directory ${path} does not exist`)
-    if (entry.type !== "dir") throw new Error(`${path} is not a directory`)
-    targetPath = resolved
-  }
-
-  const children = await getChildren(targetPath)
-  return children.sort((a, b) => entryName(a.path).localeCompare(entryName(b.path)))
-}
-
-/**
- * Writes file content to a path (creating or overwriting).
- *
- * Data is stored chunked in the chunks store and metadata is stored in the meta store.
- * If the target path is a symlink, the symlink is resolved and the target file is written.
- *
- * @param inputPath - File path to write to.
- * @param data - File content to write (string, bytes, Blob, stream, or async iterable).
- * @param options.mimeType - MIME type stored with the file metadata.
- * @param options.chunkSize - Chunk size used for chunking (defaults to {@link DEFAULT_CHUNK_SIZE}).
- * @param options.parents - If true, create missing parent directories.
- * @returns Resolves when the write transaction is committed.
- * @throws If the path resolves to a directory.
- */
-export const writeFile = async (inputPath: FsPath, data: FileContent, options: WriteOptions = {}) => {
+async function _writeFile(inputPath: FsPath, data: FileContent, options: WriteOptions = {}) {
   const inputNormalized = normalizePath(inputPath)
 
-  const rawEntry = await getEntryRaw(inputNormalized)
+  const rawEntry = await _getEntryRaw(inputNormalized)
   const isLink = rawEntry?.type === "link"
-  const { resolved: path, entry: existing } = await resolveLink(inputNormalized)
+  const { resolved: path, entry: existing } = await _resolveLink(inputNormalized)
 
   const now = Date.now()
   const parent = isLink ? parentPath(path) : parentPath(inputNormalized)
 
   if (!isLink) {
-    await ensureDirExists(parent, { parents: options.parents ?? false })
+    await _ensureDirExists(parent, { parents: options.parents ?? false })
   }
 
   if (existing && existing.type === "dir") throw new Error(`Cannot write file, ${path} is a directory`)
@@ -821,16 +369,280 @@ export const writeFile = async (inputPath: FsPath, data: FileContent, options: W
   await notifyPathChanged(path)
 }
 
-/**
- * Writes a file from a stream or async iterable of bytes.
- *
- * This is a convenience wrapper around {@link writeFile}.
- *
- * @param inputPath - File path to write to.
- * @param source - ReadableStream or AsyncIterable that yields Uint8Array chunks.
- * @param options - See {@link writeFile} options.
- * @returns Resolves when the write transaction is committed.
- */
+async function _remove(inputPath: FsPath, options: RemoveOptions = {}) {
+  const path = normalizePath(inputPath)
+  if (path === "/") throw new Error("Cannot remove root directory")
+  const entry = await _getEntryRaw(path)
+  if (!entry) return
+
+  const database = await ensureDbOpen()
+
+  if (entry.type === "link") {
+    await database.meta.delete(path)
+    await notifyPathChanged(path)
+    return
+  }
+
+  if (entry.type === "file") {
+    await database.transaction("rw", database.meta, database.chunks, async () => {
+      await database.chunks.where("path").equals(path).delete()
+      await database.meta.delete(path)
+    })
+    await notifyPathChanged(path)
+    return
+  }
+
+  const children = await _getChildren(path)
+  if (children.length > 0 && !options.recursive) {
+    throw new Error(`Directory ${path} is not empty`)
+  }
+
+  for (const child of children) {
+    await _remove(child.path, options)
+  }
+
+  await database.meta.delete(path)
+  await notifyPathChanged(path)
+}
+
+// -----------------------------------------------------------------------------
+// Initialization
+// -----------------------------------------------------------------------------
+
+export const DEFAULT_FOLDERS: FsPath[] = [
+  "/Programs",
+  "/Desktop",
+  "/Documents",
+  "/Pictures",
+  "/Music",
+  "/Videos",
+  "/Downloads",
+]
+
+let fsInitPromise: Promise<void> | null = null
+
+async function ensureDefaultFolders() {
+  for (const folderPath of DEFAULT_FOLDERS) {
+    const existing = await _getEntry(folderPath)
+    if (!existing) {
+      await _mkdir(folderPath, { parents: true })
+    }
+  }
+}
+
+export const initFs = async () => {
+  if (!fsInitPromise) {
+    fsInitPromise = (async () => {
+      await ensureDbOpen()
+      await ensureDefaultFolders()
+    })()
+  }
+  return fsInitPromise
+}
+
+// -----------------------------------------------------------------------------
+// Public API (Waits for Init)
+// -----------------------------------------------------------------------------
+
+export const subscribe = <T extends FsEntry>(path: FsPath, callback: (entry: T | undefined) => void) => {
+  const key = crypto.randomUUID()
+
+  if (!subscribers.has(path)) {
+    subscribers.set(path, new Map())
+  }
+  subscribers.get(path)!.set(key, callback as (entry: FsEntry | undefined) => void)
+
+  return () => {
+    const pathSubscribers = subscribers.get(path)
+
+    if (pathSubscribers) {
+      pathSubscribers.delete(key)
+
+      if (pathSubscribers.size === 0) {
+        subscribers.delete(path)
+      }
+    }
+  }
+}
+
+export const getEntry = async (path: FsPath): Promise<StoredEntry | undefined> => {
+  await initFs()
+  return _getEntry(path)
+}
+
+export const putEntry = async (entry: StoredEntry) => {
+  await initFs()
+  const database = await ensureDbOpen()
+  await database.meta.put(entry)
+}
+
+export const deleteEntry = async (path: FsPath) => {
+  await initFs()
+  const database = await ensureDbOpen()
+  await database.meta.delete(path)
+}
+
+export const getChildren = async (dir: FsPath): Promise<StoredEntry[]> => {
+  await initFs()
+  return _getChildren(dir)
+}
+
+export const deleteChunks = async (path: FsPath) => {
+  await initFs()
+  const database = await ensureDbOpen()
+  await database.chunks.where("path").equals(path).delete()
+}
+
+export const putChunk = async (chunk: StoredChunk) => {
+  await initFs()
+  const database = await ensureDbOpen()
+  await database.chunks.put(chunk)
+}
+
+export const getChunks = async (path: FsPath): Promise<StoredChunk[]> => {
+  await initFs()
+  return _getChunks(path)
+}
+
+export const resolveLinkFully = async (
+  path: FsPath,
+  maxDepth: number = MAX_SYMLINK_DEPTH,
+): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
+  await initFs()
+  return _resolveLinkFully(path, maxDepth)
+}
+
+export const resolveLink = async (path: FsPath): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
+  await initFs()
+  return _resolveLink(path)
+}
+
+export const resolveLinkSingle = async (
+  path: FsPath,
+): Promise<{ resolved: FsPath; entry: StoredEntry | undefined }> => {
+  await initFs()
+  const entry = await _getEntry(path)
+  if (!entry) return { resolved: path, entry: undefined }
+  if (entry.type !== "link") return { resolved: path, entry }
+
+  const targetPath = normalizePath(entry.target)
+  const targetEntry = await _getEntry(targetPath)
+  return { resolved: targetPath, entry: targetEntry }
+}
+
+export const exists = async (inputPath: FsPath): Promise<boolean> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  try {
+    const { entry } = await _resolveLinkFully(path)
+    return entry !== undefined
+  } catch {
+    return false
+  }
+}
+
+export const lexists = async (inputPath: FsPath): Promise<boolean> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  const entry = await _getEntryRaw(path)
+  return entry !== undefined
+}
+
+export const getEntryRaw = async (path: FsPath): Promise<StoredEntry | undefined> => {
+  await initFs()
+  return _getEntryRaw(path)
+}
+
+export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean }) => {
+  await initFs()
+  return _ensureDirExists(path, { parents })
+}
+
+export const mkdir = async (inputPath: FsPath, options: { parents?: boolean } = {}) => {
+  await initFs()
+  await _mkdir(inputPath, options)
+}
+
+export const symlink = async (linkPath: FsPath, targetPath: FsPath, options: { parents?: boolean } = {}) => {
+  await initFs()
+  const link = normalizePath(linkPath)
+  const target = normalizePath(targetPath)
+
+  if (link === "/") throw new Error("Cannot create symlink at root")
+
+  const parent = parentPath(link)
+  await _ensureDirExists(parent, { parents: options.parents ?? false })
+
+  const existingLink = await _getEntry(link)
+  if (existingLink) {
+    if (existingLink.type === "dir") throw new Error(`Cannot create symlink, ${link} is a directory`)
+    if (existingLink.type === "file") throw new Error(`Cannot create symlink, ${link} is a file`)
+    throw new Error(`Symlink already exists at ${link}`)
+  }
+
+  const targetEntry = await _getEntryRaw(target)
+  if (targetEntry && targetEntry.type === "link") {
+    throw new Error(`Cannot create symlink to another symlink (${target})`)
+  }
+
+  const now = Date.now()
+  const linkEntry: StoredEntry = {
+    path: link,
+    parent,
+    type: "link",
+    target,
+    created: now,
+    modified: now,
+  }
+  const database = await ensureDbOpen()
+  await database.meta.put(linkEntry)
+  await notifyPathChanged(link)
+}
+
+export const readlink = async (inputPath: FsPath): Promise<FsPath | undefined> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  const entry = await _getEntryRaw(path)
+  if (!entry) return undefined
+  if (entry.type !== "link") throw new Error(`${path} is not a symlink`)
+  return entry.target
+}
+
+export const stat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  const { entry } = await _resolveLink(path)
+  return entry ?? undefined
+}
+
+export const lstat = async (inputPath: FsPath): Promise<FsEntry | undefined> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  const entry = await _getEntryRaw(path)
+  return entry ?? undefined
+}
+
+export const list = async (inputPath: FsPath = "/"): Promise<FsEntry[]> => {
+  await initFs()
+  const path = normalizePath(inputPath)
+  let targetPath = path
+
+  if (path !== "/") {
+    const { resolved, entry } = await _resolveLink(path)
+    if (!entry) throw new Error(`Directory ${path} does not exist`)
+    if (entry.type !== "dir") throw new Error(`${path} is not a directory`)
+    targetPath = resolved
+  }
+
+  const children = await _getChildren(targetPath)
+  return children.sort((a, b) => entryName(a.path).localeCompare(entryName(b.path)))
+}
+
+export const writeFile = async (inputPath: FsPath, data: FileContent, options: WriteOptions = {}) => {
+  await initFs()
+  return _writeFile(inputPath, data, options)
+}
+
 export const writeFileStream = async (
   inputPath: FsPath,
   source: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array>,
@@ -839,51 +651,17 @@ export const writeFileStream = async (
   return writeFile(inputPath, source, options)
 }
 
-/**
- * Concatenates chunk blobs into a single contiguous Uint8Array.
- *
- * @param chunks - Chunk records in the order they should be concatenated.
- * @returns A Uint8Array containing the combined bytes.
- */
-export const concatChunks = async (chunks: StoredChunk[]): Promise<Uint8Array> => {
-  const buffers: Uint8Array[] = []
-  let total = 0
-
-  for (const chunk of chunks) {
-    const buf = new Uint8Array(await chunk.data.arrayBuffer())
-    buffers.push(buf)
-    total += buf.byteLength
-  }
-
-  const merged = new Uint8Array(total)
-  let offset = 0
-  for (const buf of buffers) {
-    merged.set(buf, offset)
-    offset += buf.byteLength
-  }
-  return merged
-}
-
-/**
- * Reads a file and returns it as ArrayBuffer (default), text, or Blob.
- *
- * If `inputPath` is a symlink, the symlink is resolved and the target file is read.
- *
- * @param inputPath - File path to read.
- * @param options.as - Output type: `"arrayBuffer"` (default), `"text"`, or `"blob"`.
- * @returns The file contents in the requested format, or `undefined` if the file does not exist.
- * @throws If the path does not resolve to a file.
- */
 export const readFile = async (
   inputPath: FsPath,
   options: ReadOptions = {},
 ): Promise<ArrayBuffer | string | Blob | undefined> => {
+  await initFs()
   const inputNormalized = normalizePath(inputPath)
-  const { resolved: path, entry } = await resolveLink(inputNormalized)
+  const { resolved: path, entry } = await _resolveLink(inputNormalized)
   if (!entry) return undefined
   if (entry.type !== "file") throw new Error(`${path} is not a file`)
 
-  const chunks = await getChunks(path)
+  const chunks = await _getChunks(path)
   const merged = await concatChunks(chunks)
   const owned = merged.byteOffset === 0 && merged.byteLength === merged.buffer.byteLength ? merged : merged.slice()
   const arrayBuffer =
@@ -897,22 +675,14 @@ export const readFile = async (
   return arrayBuffer
 }
 
-/**
- * Reads a file as a ReadableStream of stored chunks.
- *
- * If `inputPath` is a symlink, the symlink is resolved and the target file is read.
- *
- * @param inputPath - File path to read.
- * @returns A ReadableStream that emits file chunks in order.
- * @throws If the file does not exist or the path does not resolve to a file.
- */
 export const readFileStream = async (inputPath: FsPath): Promise<ReadableStream<Uint8Array>> => {
+  await initFs()
   const inputNormalized = normalizePath(inputPath)
-  const { resolved: path, entry } = await resolveLink(inputNormalized)
+  const { resolved: path, entry } = await _resolveLink(inputNormalized)
   if (!entry) throw new Error(`File ${inputNormalized} not found`)
   if (entry.type !== "file") throw new Error(`${path} is not a file`)
 
-  const chunks = await getChunks(path)
+  const chunks = await _getChunks(path)
   let index = 0
 
   return new ReadableStream<Uint8Array>({
@@ -933,60 +703,13 @@ export const readFileStream = async (inputPath: FsPath): Promise<ReadableStream<
   })
 }
 
-/**
- * Removes a file, directory, or symlink.
- *
- * - Symlink: deletes only the link entry.
- * - File: deletes metadata and all chunks.
- * - Directory: deletes directory entry; if `recursive` is true, deletes the entire subtree.
- *
- * @param inputPath - Path to remove.
- * @param options.recursive - If true, remove non-empty directories recursively.
- * @returns Resolves when deletion is committed.
- * @throws If attempting to remove `"/"` or a non-empty directory without `recursive`.
- */
 export const remove = async (inputPath: FsPath, options: RemoveOptions = {}) => {
-  const path = normalizePath(inputPath)
-  if (path === "/") throw new Error("Cannot remove root directory")
-  const entry = await getEntryRaw(path)
-  if (!entry) return
-
-  const database = await ensureDbOpen()
-
-  if (entry.type === "link") {
-    await database.meta.delete(path)
-    await notifyPathChanged(path)
-    return
-  }
-
-  if (entry.type === "file") {
-    await database.transaction("rw", database.meta, database.chunks, async () => {
-      await database.chunks.where("path").equals(path).delete()
-      await database.meta.delete(path)
-    })
-    await notifyPathChanged(path)
-    return
-  }
-
-  const children = await getChildren(path)
-  if (children.length > 0 && !options.recursive) {
-    throw new Error(`Directory ${path} is not empty`)
-  }
-
-  for (const child of children) {
-    await remove(child.path, options)
-  }
-
-  await database.meta.delete(path)
-  await notifyPathChanged(path)
+  await initFs()
+  return _remove(inputPath, options)
 }
 
-/**
- * Clears the entire filesystem database (all entries and chunks).
- *
- * @returns Resolves when the clear transaction is committed.
- */
 export const clear = async () => {
+  // Not waiting for initFs since this nukes it anyway
   const database = await ensureDbOpen()
   await database.transaction("rw", database.meta, database.chunks, async () => {
     await database.meta.clear()
@@ -994,28 +717,18 @@ export const clear = async () => {
   })
 }
 
-/**
- * Renames an entry (file, directory, or symlink) to `newName` within the same parent directory.
- *
- * For directories, this updates all descendant paths and chunk records.
- * For files, this updates chunk keys/paths and metadata.
- *
- * @param oldPath - Existing path to rename.
- * @param newName - New basename (no slashes).
- * @returns Resolves when the rename transaction is committed.
- * @throws If `oldPath` is `"/"`, missing, or the target path already exists.
- */
 export const rename = async (oldPath: FsPath, newName: string): Promise<void> => {
+  await initFs()
   const normalizedOld = normalizePath(oldPath)
   if (normalizedOld === "/") throw new Error("Cannot rename root directory")
 
-  const entry = await getEntryRaw(normalizedOld)
+  const entry = await _getEntryRaw(normalizedOld)
   if (!entry) throw new Error(`Path ${normalizedOld} does not exist`)
 
   const parent = parentPath(normalizedOld)
   const newPath = (parent === "/" ? `/${newName}` : `${parent}/${newName}`) as FsPath
 
-  const existingAtNew = await getEntryRaw(newPath)
+  const existingAtNew = await _getEntryRaw(newPath)
   if (existingAtNew) throw new Error(`Path ${newPath} already exists`)
 
   const database = await ensureDbOpen()
@@ -1053,7 +766,7 @@ export const rename = async (oldPath: FsPath, newName: string): Promise<void> =>
 
     const collectPaths = async (currentPath: FsPath, newBasePath: FsPath) => {
       pathMappings.push({ oldPath: currentPath, newPath: newBasePath })
-      const children = await getChildren(currentPath)
+      const children = await _getChildren(currentPath)
       for (const child of children) {
         const childName = entryName(child.path)
         const newChildPath = `${newBasePath}/${childName}` as FsPath
@@ -1063,7 +776,7 @@ export const rename = async (oldPath: FsPath, newName: string): Promise<void> =>
     await collectPaths(normalizedOld, newPath)
 
     const renameRecursive = async (currentPath: FsPath, newBasePath: FsPath) => {
-      const children = await getChildren(currentPath)
+      const children = await _getChildren(currentPath)
 
       for (const child of children) {
         const childName = entryName(child.path)
@@ -1124,24 +837,8 @@ export const rename = async (oldPath: FsPath, newName: string): Promise<void> =>
   }
 }
 
-type MoveOptions = {
-  /** If true, overwrite existing destination. */
-  overwrite?: boolean
-}
-
-/**
- * Moves a file, directory, or symlink to a new location.
- *
- * Unlike {@link rename}, this supports moving to a different parent directory.
- * Symlinks pointing to the source are updated to point to the destination.
- *
- * @param srcPath - Source path to move.
- * @param destPath - Destination path.
- * @param options.overwrite - If true, overwrite existing destination.
- * @returns Resolves when the move is complete.
- * @throws If source doesn't exist, or destination exists and overwrite is false.
- */
 export const move = async (srcPath: FsPath, destPath: FsPath, options: MoveOptions = {}): Promise<void> => {
+  await initFs()
   const src = normalizePath(srcPath)
   const dest = normalizePath(destPath)
 
@@ -1154,17 +851,17 @@ export const move = async (srcPath: FsPath, destPath: FsPath, options: MoveOptio
     throw new Error(`Cannot move ${src} into itself (${dest})`)
   }
 
-  const srcEntry = await getEntryRaw(src)
+  const srcEntry = await _getEntryRaw(src)
   if (!srcEntry) throw new Error(`Source path ${src} does not exist`)
 
-  const destEntry = await getEntryRaw(dest)
+  const destEntry = await _getEntryRaw(dest)
   if (destEntry) {
     if (!options.overwrite) throw new Error(`Destination path ${dest} already exists`)
-    await remove(dest, { recursive: true })
+    await _remove(dest, { recursive: true })
   }
 
   const destParent = parentPath(dest)
-  await ensureDirExists(destParent, { parents: true })
+  await _ensureDirExists(destParent, { parents: true })
 
   const database = await ensureDbOpen()
 
@@ -1173,9 +870,9 @@ export const move = async (srcPath: FsPath, destPath: FsPath, options: MoveOptio
 
   const collectPathsRecursive = async (currentPath: FsPath, newBasePath: FsPath) => {
     pathMappings.push({ oldPath: currentPath, newPath: newBasePath })
-    const entry = await getEntryRaw(currentPath)
+    const entry = await _getEntryRaw(currentPath)
     if (entry?.type === "dir") {
-      const children = await getChildren(currentPath)
+      const children = await _getChildren(currentPath)
       for (const child of children) {
         const childName = entryName(child.path)
         const newChildPath = `${newBasePath}/${childName}` as FsPath
@@ -1187,11 +884,11 @@ export const move = async (srcPath: FsPath, destPath: FsPath, options: MoveOptio
 
   // Move the entry and all children
   const moveRecursive = async (currentPath: FsPath, newPath: FsPath) => {
-    const entry = await getEntryRaw(currentPath)
+    const entry = await _getEntryRaw(currentPath)
     if (!entry) return
 
     if (entry.type === "dir") {
-      const children = await getChildren(currentPath)
+      const children = await _getChildren(currentPath)
       for (const child of children) {
         const childName = entryName(child.path)
         const newChildPath = `${newPath}/${childName}` as FsPath
@@ -1233,24 +930,8 @@ export const move = async (srcPath: FsPath, destPath: FsPath, options: MoveOptio
   await notifyPathChanged(dest)
 }
 
-type CopyOptions = {
-  /** If true, overwrite existing destination. */
-  overwrite?: boolean
-  /** If true, follow symlinks and copy their targets. If false, copy symlinks as symlinks. */
-  followSymlinks?: boolean
-}
-
-/**
- * Copies a file, directory, or symlink to a new location.
- *
- * @param srcPath - Source path to copy.
- * @param destPath - Destination path.
- * @param options.overwrite - If true, overwrite existing destination.
- * @param options.followSymlinks - If true, copy symlink targets. If false (default), copy symlinks as symlinks.
- * @returns Resolves when the copy is complete.
- * @throws If source doesn't exist, or destination exists and overwrite is false.
- */
 export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptions = {}): Promise<void> => {
+  await initFs()
   const src = normalizePath(srcPath)
   const dest = normalizePath(destPath)
 
@@ -1263,26 +944,26 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
     throw new Error(`Cannot copy ${src} into itself (${dest})`)
   }
 
-  const srcEntry = options.followSymlinks ? (await resolveLinkFully(src)).entry : await getEntryRaw(src)
+  const srcEntry = options.followSymlinks ? (await _resolveLinkFully(src)).entry : await _getEntryRaw(src)
 
   if (!srcEntry) throw new Error(`Source path ${src} does not exist`)
 
-  const destEntry = await getEntryRaw(dest)
+  const destEntry = await _getEntryRaw(dest)
   if (destEntry) {
     if (!options.overwrite) throw new Error(`Destination path ${dest} already exists`)
-    await remove(dest, { recursive: true })
+    await _remove(dest, { recursive: true })
   }
 
   const destParent = parentPath(dest)
-  await ensureDirExists(destParent, { parents: true })
+  await _ensureDirExists(destParent, { parents: true })
 
   const database = await ensureDbOpen()
   const now = Date.now()
 
   const copyRecursive = async (currentSrcPath: FsPath, currentDestPath: FsPath) => {
     const entry = options.followSymlinks
-      ? (await resolveLinkFully(currentSrcPath)).entry
-      : await getEntryRaw(currentSrcPath)
+      ? (await _resolveLinkFully(currentSrcPath)).entry
+      : await _getEntryRaw(currentSrcPath)
 
     if (!entry) return
 
@@ -1294,6 +975,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
         type: "link",
         target: entry.target,
         created: now,
+        modified: now,
       }
       await database.meta.put(linkEntry)
     } else if (entry.type === "dir") {
@@ -1307,7 +989,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
       await database.meta.put(dirEntry)
 
       // Copy children
-      const children = await getChildren(entry.path)
+      const children = await _getChildren(entry.path)
       for (const child of children) {
         const childName = entryName(child.path)
         const newChildPath = `${currentDestPath}/${childName}` as FsPath
@@ -1315,7 +997,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
       }
     } else if (entry.type === "file") {
       // Copy file chunks
-      const srcChunks = await getChunks(entry.path)
+      const srcChunks = await _getChunks(entry.path)
       let chunkIndex = 0
 
       for (const srcChunk of srcChunks) {
@@ -1349,4 +1031,92 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
   })
 
   await notifyPathChanged(dest)
+}
+
+// -----------------------------------------------------------------------------
+// Utilities
+// -----------------------------------------------------------------------------
+
+export const encoder = new TextEncoder()
+
+export async function concatChunks(chunks: StoredChunk[]): Promise<Uint8Array> {
+  const buffers: Uint8Array[] = []
+  let total = 0
+
+  for (const chunk of chunks) {
+    const buf = new Uint8Array(await chunk.data.arrayBuffer())
+    buffers.push(buf)
+    total += buf.byteLength
+  }
+
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const buf of buffers) {
+    merged.set(buf, offset)
+    offset += buf.byteLength
+  }
+  return merged
+}
+
+export const toAsyncIterable = async function* (
+  input: FileContent,
+  chunkSize: number,
+): AsyncGenerator<Uint8Array, void, unknown> {
+  if (typeof input === "string") {
+    const data = encoder.encode(input)
+    yield* sliceBuffer(data, chunkSize)
+    return
+  }
+
+  if (input instanceof Uint8Array) {
+    yield* sliceBuffer(input, chunkSize)
+    return
+  }
+
+  if (input instanceof ArrayBuffer) {
+    yield* sliceBuffer(new Uint8Array(input), chunkSize)
+    return
+  }
+
+  if (input instanceof Blob) {
+    const stream = input.stream()
+    for await (const chunk of stream as unknown as AsyncIterable<Uint8Array>) {
+      yield chunk
+    }
+    return
+  }
+
+  if (isReadableStream(input)) {
+    for await (const chunk of readableStreamToAsyncIterable(input)) {
+      yield chunk
+    }
+    return
+  }
+
+  for await (const chunk of input as AsyncIterable<Uint8Array>) {
+    yield chunk
+  }
+}
+
+export const sliceBuffer = function* (data: Uint8Array, chunkSize: number) {
+  for (let offset = 0; offset < data.byteLength; offset += chunkSize) {
+    yield data.subarray(offset, Math.min(offset + chunkSize, data.byteLength))
+  }
+}
+
+export const isReadableStream = (value: unknown): value is ReadableStream<Uint8Array> => {
+  return typeof value === "object" && value !== null && typeof (value as ReadableStream).getReader === "function"
+}
+
+export const readableStreamToAsyncIterable = async function* (stream: ReadableStream<Uint8Array>) {
+  const reader = stream.getReader()
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (value) yield value
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
