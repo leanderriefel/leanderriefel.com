@@ -1,14 +1,4 @@
-import {
-  createSignal,
-  createResource,
-  createMemo,
-  Show,
-  Signal,
-  Accessor,
-  Resource,
-  onMount,
-  createEffect,
-} from "solid-js"
+import { createSignal, createMemo, Show, Signal, Accessor, Resource, onMount } from "solid-js"
 import { App, createAppInstance, LaunchContext } from "~/os"
 import { fuzzyMatch } from "~/os/utils"
 import { ContextMenu, ContextMenuTrigger } from "~/components/core"
@@ -16,15 +6,13 @@ import {
   type FsPath,
   type FsEntry,
   type FileEntry,
-  list,
+  createFsListResource,
   mkdir,
   writeFile,
   remove,
   rename,
   parentPath as fsParentPath,
   entryName as fsEntryName,
-  DirEntry,
-  subscribe,
 } from "~/os/fs"
 import { isProtectedAppId, getInstalledApps, waitForInstalledApps, refreshInstalledApps } from "~/os/fs/programs"
 import {
@@ -81,7 +69,6 @@ export class FileExplorerApp extends App {
   private searchQuery!: Signal<string>
   private selectedEntry!: Signal<FsPath | null>
   private sidebarCollapsed!: Signal<boolean>
-  private refreshTrigger!: Signal<number>
   private clipboard!: Signal<ClipboardItem | null>
   private newFolderDialogOpen!: Signal<boolean>
   private newFileDialogOpen!: Signal<boolean>
@@ -115,7 +102,6 @@ export class FileExplorerApp extends App {
     this.searchQuery = createSignal("")
     this.selectedEntry = createSignal<FsPath | null>(null)
     this.sidebarCollapsed = createSignal(false)
-    this.refreshTrigger = createSignal(0)
     this.clipboard = createSignal<ClipboardItem | null>(null)
     this.newFolderDialogOpen = createSignal(false)
     this.newFileDialogOpen = createSignal(false)
@@ -135,25 +121,8 @@ export class FileExplorerApp extends App {
       void waitForInstalledApps()
     })
 
-    const [rawEntries, { refetch }] = createResource(
-      () => ({ path: this.path[0](), trigger: this.refreshTrigger[0]() }),
-      async ({ path: p }) => {
-        try {
-          return await list(p)
-        } catch {
-          return []
-        }
-      },
-    )
+    const [rawEntries, { refetch }] = createFsListResource(this.path[0], { initialValue: [] })
 
-    createEffect(() => {
-      const unsubscribe = subscribe<DirEntry>(this.path[0](), () => {
-        refetch()
-      })
-      return () => unsubscribe()
-    })
-
-    // eslint-disable-next-line solid/reactivity
     this.rawEntries = rawEntries
     this.refetchEntries = () => void refetch()
 
@@ -201,8 +170,6 @@ export class FileExplorerApp extends App {
 
     if (context.filePath) this.navigate(context.filePath)
   }
-
-  private refresh = () => this.refreshTrigger[1]((t) => t + 1)
 
   private navigate = (newPath: FsPath) => {
     const currentHistory = this.history[0]()
@@ -333,7 +300,6 @@ export class FileExplorerApp extends App {
       await mkdir(newPath, { parents: true })
       this.newFolderDialogOpen[1](false)
       this.newItemName[1]("")
-      this.refresh()
     } catch (err) {
       console.error("Failed to create folder:", err)
     }
@@ -348,7 +314,6 @@ export class FileExplorerApp extends App {
       await writeFile(newPath, "", { parents: true })
       this.newFileDialogOpen[1](false)
       this.newItemName[1]("")
-      this.refresh()
     } catch (err) {
       console.error("Failed to create file:", err)
     }
@@ -364,7 +329,6 @@ export class FileExplorerApp extends App {
       this.renameDialogOpen[1](false)
       this.newItemName[1]("")
       this.renameTarget[1](null)
-      this.refresh()
     } catch (err) {
       console.error("Failed to rename:", err)
     }
@@ -393,7 +357,6 @@ export class FileExplorerApp extends App {
     try {
       await remove(entry.path, { recursive: true })
       this.selectedEntry[1](null)
-      this.refresh()
     } catch (err) {
       console.error("Failed to delete:", err)
     }

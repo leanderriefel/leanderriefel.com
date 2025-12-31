@@ -21,4 +21,3 @@ export const Header = (props: HeaderProps) => {
     </div>
   )
 }
-

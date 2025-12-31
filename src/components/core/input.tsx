@@ -25,8 +25,7 @@ const inputVariants = cva(
 )
 
 export interface InputProps
-  extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "size">,
-    VariantProps<typeof inputVariants> {
+  extends Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "size">, VariantProps<typeof inputVariants> {
   class?: string
 }
 
@@ -56,8 +55,7 @@ const textareaVariants = cva(
 )
 
 export interface TextareaProps
-  extends JSX.TextareaHTMLAttributes<HTMLTextAreaElement>,
-    VariantProps<typeof textareaVariants> {
+  extends JSX.TextareaHTMLAttributes<HTMLTextAreaElement>, VariantProps<typeof textareaVariants> {
   class?: string
 }
 

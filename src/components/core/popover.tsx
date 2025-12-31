@@ -42,7 +42,7 @@ export const PopoverTrigger = (props: PopoverTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <PopoverPrimitive.Trigger class={cn("inline-flex cursor-pointer", local.class)} {...rest}>
+    <PopoverPrimitive.Trigger class={cn("inline-flex", local.class)} {...rest}>
       {local.children}
     </PopoverPrimitive.Trigger>
   )
@@ -114,7 +114,7 @@ export const PopoverClose = (props: PopoverCloseProps) => {
   return (
     <PopoverPrimitive.CloseButton
       class={cn(
-        "absolute top-2 right-2 flex size-6 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        "absolute top-2 right-2 flex size-6 items-center justify-center rounded-md bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
         local.class,
       )}
       {...rest}

@@ -1,10 +1,10 @@
-import { createEffect, createMemo, createResource, createSignal, For, Show, type Accessor, type Setter } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show, type Accessor, type Setter } from "solid-js"
 import {
   type FsPath,
   type FsEntry,
   type FileEntry,
-  list,
   stat,
+  createFsListResource,
   parentPath as fsParentPath,
   entryName as fsEntryName,
 } from "~/os/fs"
@@ -63,26 +63,24 @@ export const FileDialog = (props: FileDialogProps) => {
   const allowedExtensions = () => props.options.allowedExtensions
 
   createEffect(() => {
-    const startPath = props.options.initialPath ?? "/"
-    setCurrentPath(startPath)
-    setHistory([startPath])
+    if (props.open()) {
+      const startPath = props.options.initialPath ?? "/"
+      setCurrentPath(startPath)
+      setHistory([startPath])
+    }
   })
 
   createEffect(() => {
-    setFileName(props.options.defaultFileName ?? "")
+    if (props.open()) {
+      setFileName(props.options.defaultFileName ?? "")
+    }
   })
 
-  const [rawEntries, { refetch }] = createResource(
-    currentPath,
-    async (path) => {
-      try {
-        return await list(path)
-      } catch {
-        return []
-      }
-    },
-    { initialValue: [] },
-  )
+  const shouldFetch = () => props.open() && currentPath()
+  const [rawEntries, { refetch }] = createFsListResource(() => (shouldFetch() ? currentPath() : ("/" as FsPath)), {
+    initialValue: [],
+  })
+  const isLoadingEntries = () => props.open() && rawEntries.loading
 
   const entries = createMemo(() => {
     let items = rawEntries() ?? []
@@ -424,7 +422,15 @@ export const FileDialog = (props: FileDialogProps) => {
               </div>
 
               {/* File list */}
-              <div class="flex min-h-0 flex-1 flex-col">
+              <div class="relative flex min-h-0 flex-1 flex-col">
+                <Show when={isLoadingEntries()}>
+                  <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCwIcon class="size-4 animate-spin" />
+                      <span>Loading...</span>
+                    </div>
+                  </div>
+                </Show>
                 <Show when={viewMode() === "list"}>
                   <div class="flex items-center gap-2 border-b border-border bg-secondary/30 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
                     <button class="flex-1 text-left hover:text-foreground" onClick={() => toggleSort("name")}>

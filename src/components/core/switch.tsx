@@ -4,7 +4,7 @@ import { splitProps } from "solid-js"
 import { cn } from "~/os/utils"
 
 const switchVariants = cva(
-  "relative inline-flex shrink-0 cursor-pointer items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+  "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       size: {
@@ -42,8 +42,7 @@ const thumbTranslate: Record<NonNullable<VariantProps<typeof switchVariants>["si
 }
 
 export interface SwitchProps
-  extends Omit<SwitchPrimitiveRootProps, "class" | "onChange">,
-    VariantProps<typeof switchVariants> {
+  extends Omit<SwitchPrimitiveRootProps, "class" | "onChange">, VariantProps<typeof switchVariants> {
   class?: string
   onCheckedChange?: SwitchPrimitiveRootProps["onChange"]
 }

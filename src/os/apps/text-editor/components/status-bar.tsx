@@ -36,4 +36,3 @@ export const StatusBar = (props: StatusBarProps) => {
     </div>
   )
 }
-

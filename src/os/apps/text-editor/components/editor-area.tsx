@@ -13,7 +13,15 @@ type EditorAreaProps = {
 
 export const EditorArea = (props: EditorAreaProps) => {
   return (
-    <div class="flex min-h-0 flex-1 flex-col p-2">
+    <div class="relative flex min-h-0 flex-1 flex-col p-2">
+      <Show when={props.status() === "loading"}>
+        <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileTextIcon class="size-4 animate-pulse" />
+            <span>Loading file...</span>
+          </div>
+        </div>
+      </Show>
       <Show
         when={props.currentPath()}
         fallback={
@@ -35,4 +43,3 @@ export const EditorArea = (props: EditorAreaProps) => {
     </div>
   )
 }
-

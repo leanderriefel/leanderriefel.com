@@ -1,16 +1,39 @@
-import { createSignal } from "solid-js"
+import { Accessor, createSignal, Setter } from "solid-js"
 import { AppClass, appRegistry } from "~/os"
-import { FsPath, entryName, list, mkdir, stat, writeFile } from "~/os/fs"
+import { FsPath, entryName, list, mkdir, stat, subscribe, writeFile } from "~/os/fs"
 import { read, write } from "~/os/registry"
 
 const PROGRAMS_PATH = "/Programs" as FsPath
 const PROGRAM_FILE_EXT = ".app"
 const SEED_REGISTRY_KEY = "os_programs_seeded_v1"
 
-const [installedApps, setInstalledApps] = createSignal<AppClass[]>([])
-const [installedAppIds, setInstalledAppIds] = createSignal<Set<string>>(new Set())
+// HMR-safe state getters
+const getInstalledAppsSignal = (): [Accessor<AppClass[]>, Setter<AppClass[]>] => {
+  if (!globalThis.__osInstalledApps) {
+    globalThis.__osInstalledApps = createSignal<AppClass[]>([])
+  }
+  return globalThis.__osInstalledApps
+}
 
-let ensureProgramsPromise: Promise<void> | null = null
+const getInstalledAppIdsSignal = (): [Accessor<Set<string>>, Setter<Set<string>>] => {
+  if (!globalThis.__osInstalledAppIds) {
+    globalThis.__osInstalledAppIds = createSignal<Set<string>>(new Set())
+  }
+  return globalThis.__osInstalledAppIds
+}
+
+const getEnsureProgramsPromise = (): Promise<void> | null => {
+  return globalThis.__osEnsureProgramsPromise ?? null
+}
+
+const setEnsureProgramsPromise = (promise: Promise<void> | null) => {
+  globalThis.__osEnsureProgramsPromise = promise
+}
+
+const [installedApps, setInstalledApps] = getInstalledAppsSignal()
+const [installedAppIds, setInstalledAppIds] = getInstalledAppIdsSignal()
+
+let programsWatcherUnsubscribe: (() => void) | null = null
 
 const isClient = () => typeof window !== "undefined"
 
@@ -104,21 +127,33 @@ const loadInstalledApps = async () => {
   setInstalledApps(apps)
 }
 
+const ensureProgramsWatcher = () => {
+  if (!isClient()) return
+  if (programsWatcherUnsubscribe) return
+
+  programsWatcherUnsubscribe = subscribe(PROGRAMS_PATH, () => {
+    void loadInstalledApps()
+  })
+}
+
 export const refreshInstalledApps = async () => {
   await ensureProtectedPrograms()
   await loadInstalledApps()
 }
 
 export const waitForInstalledApps = async () => {
-  if (!ensureProgramsPromise) {
-    ensureProgramsPromise = (async () => {
+  let promise = getEnsureProgramsPromise()
+  if (!promise) {
+    promise = (async () => {
       await seedDefaultPrograms()
       await ensureProtectedPrograms()
       await loadInstalledApps()
+      ensureProgramsWatcher()
     })()
+    setEnsureProgramsPromise(promise)
   }
 
-  await ensureProgramsPromise
+  await promise
 }
 
 export const getInstalledApps = () => installedApps()

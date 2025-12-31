@@ -1,4 +1,5 @@
 export { TaskbarButton, TaskbarButtons } from "./taskbar-button"
-export { StartMenu } from "./start-menu"
+export { StartMenuButton } from "./start-menu-button"
 export { ClockBar } from "./clock-bar"
+export { TaskbarControls } from "./controls"
 export { OsLogo } from "./os-logo"

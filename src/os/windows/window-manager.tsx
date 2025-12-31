@@ -1,5 +1,5 @@
 import { XIcon, MinusIcon, SquareIcon, Maximize2Icon, CopyIcon } from "lucide-solid"
-import { For, Suspense, createSignal, onCleanup, onMount } from "solid-js"
+import { For, Suspense, createEffect, createSignal, onCleanup, onMount } from "solid-js"
 import { OsWindow, createAppInstance } from "~/os"
 import {
   bringToFront,
@@ -25,6 +25,8 @@ import {
 const MIN_WIDTH = 200
 const MIN_HEIGHT = 100
 
+const BOUND_CHECK_MARGIN = 32
+
 export const WindowManager = () => {
   onMount(() => {
     const handleResize = () => {
@@ -48,6 +50,9 @@ export const WindowManager = () => {
 }
 
 export const Window = (props: OsWindow) => {
+  // oxlint-disable-next-line no-unassigned-vars
+  let headerRef!: HTMLDivElement
+
   const [isDragging, setIsDragging] = createSignal(false)
   const [dragStart, setDragStart] = createSignal<{
     mouseX: number
@@ -67,17 +72,21 @@ export const Window = (props: OsWindow) => {
     handle: string
   } | null>(null)
 
+  const [isExiting, setIsExiting] = createSignal(false)
+
   const handleClose = (e?: MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
-    closeApp(props.id)
+    setIsExiting(true)
+    setTimeout(() => closeApp(props.id), 150)
   }
 
   const handleMinimize = (e?: MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
     const appId = props.id
-    minimizeApp(appId)
+    setIsExiting(true)
+    setTimeout(() => minimizeApp(appId), 150)
   }
 
   const handleMaximize = (e?: MouseEvent) => {
@@ -87,6 +96,12 @@ export const Window = (props: OsWindow) => {
     const appId = props.id
     setOpenApps("apps", (w) => w.id === appId, "display", currentDisplay === "maximized" ? "default" : "maximized")
   }
+
+  createEffect(() => {
+    if (props.display !== "minimized") {
+      setIsExiting(false)
+    }
+  })
 
   const handleDuplicate = () => {
     const AppClass = props.app.constructor as new () => typeof props.app
@@ -137,12 +152,16 @@ export const Window = (props: OsWindow) => {
 
       const newX = start.windowX + deltaX
       const newY = start.windowY + deltaY
-      const maxX = window.innerWidth - props.size.width
-      const maxY = window.innerHeight - props.size.height
+
+      // Ensure at least BOUND_CHECK_MARGIN pixels of the header remain visible
+      const minX = BOUND_CHECK_MARGIN - headerRef.offsetWidth
+      const maxX = window.innerWidth - BOUND_CHECK_MARGIN
+      const minY = BOUND_CHECK_MARGIN - headerRef.offsetHeight
+      const maxY = window.innerHeight - BOUND_CHECK_MARGIN
 
       setOpenApps("apps", (w) => w.id === appId, "position", {
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY)),
+        x: Math.max(minX, Math.min(newX, maxX)),
+        y: Math.max(minY, Math.min(newY, maxY)),
       })
     } else if (isResizing() && resizeStart()) {
       const start = resizeStart()!
@@ -215,12 +234,15 @@ export const Window = (props: OsWindow) => {
     <ContextMenu>
       <div
         class={cn("absolute h-full grid-rows-[auto_1fr] border", {
+          "transition-all duration-200 ease-out": !isDragging() && !isResizing(),
           hidden: props.display === "minimized",
           grid: props.display !== "minimized",
           "shadow-xl": isFocused(props.id),
           "shadow-md": !isFocused(props.id),
           "rounded-none": props.display !== "default",
           "rounded-xl": props.display === "default",
+          "scale-95 opacity-0": isExiting(),
+          "scale-100 opacity-100": !isExiting(),
         })}
         style={{
           top: `${props.display === "maximized" ? 0 : props.position.y}px`,
@@ -231,13 +253,16 @@ export const Window = (props: OsWindow) => {
         }}
         onMouseDown={() => bringToFront(props)}
       >
-        <ContextMenuTrigger class="contents">
+        <ContextMenuTrigger>
           <div
+            ref={headerRef}
             class={cn(
-              "flex h-10 w-full cursor-move items-center justify-between gap-2 overflow-hidden rounded-t-xl border-b backdrop-blur-2xl",
+              "flex h-10 w-full cursor-move items-center justify-between gap-2 overflow-hidden border-b backdrop-blur-2xl transition-colors",
               {
                 "bg-background": isFocused(props.id),
-                "bg-background/75": !isFocused(props.id),
+                "bg-background/60": !isFocused(props.id),
+                "rounded-t-none": props.display !== "default",
+                "rounded-t-xl": props.display === "default",
               },
             )}
             onMouseDown={handleMouseDown}
@@ -245,14 +270,14 @@ export const Window = (props: OsWindow) => {
             <div class="flex min-w-0 flex-1 items-center gap-2 px-4">
               <h3 class="truncate text-xs tracking-wide text-foreground select-none">{windowName()}</h3>
             </div>
-            <div class="flex shrink-0 items-center gap-1">
+            <div class="mx-2 flex items-center gap-1">
               <Tooltip content="Minimize" side="bottom" delayDuration={500}>
                 <IconButton
                   icon={<MinusIcon class="size-3" />}
                   aria-label="Minimize"
                   variant="warning"
                   size="icon-sm"
-                  class="my-2 ml-2 size-6 rounded-md"
+                  class="size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMinimize}
                 />
@@ -269,7 +294,7 @@ export const Window = (props: OsWindow) => {
                   aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
                   variant="success"
                   size="icon-sm"
-                  class="my-2 size-6 rounded-md"
+                  class="size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMaximize}
                 />
@@ -280,7 +305,7 @@ export const Window = (props: OsWindow) => {
                   aria-label="Close"
                   variant="destructive"
                   size="icon-sm"
-                  class="my-2 mr-2 size-6 rounded-md"
+                  class="size-6 rounded-md"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleClose}
                 />
@@ -288,7 +313,12 @@ export const Window = (props: OsWindow) => {
             </div>
           </div>
         </ContextMenuTrigger>
-        <div class="@container min-h-0 w-full overflow-auto rounded-b-xl">
+        <div
+          class={cn("@container min-h-0 w-full overflow-auto transition-all duration-200 ease-out", {
+            "rounded-b-xl": props.display === "default" || !isExiting(),
+            "rounded-b-none": props.display !== "default" || isExiting(),
+          })}
+        >
           <Suspense
             fallback={
               <div class="flex h-full w-full items-center justify-center bg-background text-xs text-muted-foreground">

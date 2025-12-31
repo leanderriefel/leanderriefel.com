@@ -1,6 +1,6 @@
 import { Router } from "@solidjs/router"
 import { FileRoutes } from "@solidjs/start/router"
-import { Suspense, onMount, createSignal, Show } from "solid-js"
+import { Suspense, onMount } from "solid-js"
 import "./app.css"
 import "~/os/apps"
 import { initWindowPersistence } from "~/os/windows/open-windows"
@@ -16,11 +16,9 @@ const getServerCookies = () => {
 
 export default function App() {
   const storageManager = cookieStorageManagerSSR(isServer ? getServerCookies() : document.cookie)
-  const [mounted, setMounted] = createSignal(false)
 
   onMount(() => {
     initWindowPersistence()
-    setMounted(true)
   })
 
   return (
@@ -29,9 +27,7 @@ export default function App() {
         <>
           <ColorModeScript storageType={storageManager.type} />
           <ColorModeProvider storageManager={storageManager} initialColorMode="system" disableTransitionOnChange>
-            <Show when={mounted()}>
-              <Suspense>{props.children}</Suspense>
-            </Show>
+            <Suspense>{props.children}</Suspense>
           </ColorModeProvider>
         </>
       )}

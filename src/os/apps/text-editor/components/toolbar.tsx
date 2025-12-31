@@ -22,12 +22,7 @@ export const Toolbar = (props: ToolbarProps) => {
 
       <Separator orientation="vertical" class="h-6" />
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={props.onSave}
-        disabled={props.status() === "saving"}
-      >
+      <Button variant="ghost" size="sm" onClick={props.onSave} disabled={props.status() === "saving"}>
         <SaveIcon class="mr-1.5 size-4" />
         Save
       </Button>
@@ -39,4 +34,3 @@ export const Toolbar = (props: ToolbarProps) => {
     </div>
   )
 }
-

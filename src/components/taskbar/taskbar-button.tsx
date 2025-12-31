@@ -5,6 +5,7 @@ import { focusStack } from "~/os/focus"
 import { XIcon, MinusIcon } from "lucide-solid"
 import { Tooltip, TooltipGroup } from "~/components/core"
 import { Badge } from "~/components/core"
+import { cn } from "~/os/utils"
 
 interface TaskbarButtonProps {
   appClass: AppClass
@@ -34,7 +35,7 @@ const WindowPreviewContent = (props: {
 
           return (
             <div
-              class="group/preview flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-border bg-popover/90 p-2 backdrop-blur-md transition-colors hover:bg-accent"
+              class="group/preview flex flex-col items-center gap-2 rounded-lg border border-border bg-popover/90 p-2 backdrop-blur-md transition-colors hover:bg-accent"
               onClick={(e) => {
                 e.stopPropagation()
                 props.onWindowClick(osWindow)
@@ -53,7 +54,7 @@ const WindowPreviewContent = (props: {
                   </Show>
                 </div>
                 <button
-                  class="flex size-6 cursor-pointer items-center justify-center rounded-sm bg-secondary text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                  class="flex size-6 items-center justify-center rounded-sm bg-secondary text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
                   onClick={(e) => props.onCloseWindow(e, osWindow.id)}
                   title="Close window"
                 >
@@ -156,15 +157,17 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
         align="center"
         delayDuration={TASKBAR_TOOLTIP_OPEN_DELAY}
         ignoreSafeArea
-        contentClass={hasOpenWindows() ? "!p-0 !bg-transparent !border-0 !shadow-none !backdrop-blur-0" : ""}
+        contentClass={cn("flex items-center justify-center size-full", {
+          "p-0! bg-transparent! border-0! shadow-none! backdrop-blur-0!": hasOpenWindows(),
+        })}
       >
         <button
           onClick={handleOpenApp}
           onAuxClick={handleMiddleClick}
-          class="relative flex aspect-square size-7 cursor-pointer items-center justify-center transition-all duration-300 hover:-translate-y-0.5"
+          class="relative flex aspect-square size-8 items-center justify-center transition-all hover:-translate-y-0.5"
         >
           {/* Icon Representation */}
-          <div class="flex size-full items-center justify-center rounded-lg border border-border bg-secondary shadow-sm transition-all duration-300 group-hover:bg-secondary/80 group-hover:shadow-sm group-active:scale-95">
+          <div class="flex size-full items-center justify-center rounded-lg border border-border bg-secondary shadow-sm transition-all group-hover:bg-secondary/80 group-hover:shadow-sm group-active:scale-95">
             <span class="font-mono text-xs font-bold text-muted-foreground transition-colors group-hover:text-foreground">
               {props.appClass.appName[0]}
             </span>
@@ -178,7 +181,7 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
           </Show>
 
           {/* Active indicator (glow dot) */}
-          <div class="absolute -bottom-1.5 size-0.5 rounded-full bg-foreground opacity-0 transition-all duration-300 group-hover:opacity-100" />
+          <div class="absolute -bottom-1.5 size-0.5 rounded-full bg-foreground opacity-0 transition-all group-hover:opacity-100" />
         </button>
       </Tooltip>
     </div>

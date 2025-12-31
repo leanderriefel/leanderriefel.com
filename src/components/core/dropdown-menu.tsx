@@ -28,14 +28,14 @@ const dropdownContentVariants = cva(
 )
 
 const dropdownItemVariants = cva(
-  "relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none transition-colors",
+  "relative flex select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none transition-colors",
   {
     variants: {
       variant: {
         default:
           "text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         glass:
-          "text-foreground hover:bg-background/50 hover:text-foreground focus-visible:bg-background/75 focus-visible:text-foreground",
+          "text-foreground border border-transparent hover:border-foreground/25 hover:bg-foreground/5 hover:text-foreground focus-visible:bg-foreground/5 focus-visible:border-foreground/25 focus-visible:text-foreground",
         destructive:
           "text-destructive hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 [&_svg]:fill-destructive [&_svg]:text-destructive",
       },
@@ -74,7 +74,7 @@ export const DropdownMenuTrigger = (props: DropdownMenuTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <DropdownMenuPrimitive.Trigger class={cn("inline-flex cursor-pointer items-center", local.class)} {...rest}>
+    <DropdownMenuPrimitive.Trigger class={cn("inline-flex items-center", local.class)} {...rest}>
       {local.children}
     </DropdownMenuPrimitive.Trigger>
   )

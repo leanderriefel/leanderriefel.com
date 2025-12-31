@@ -5,4 +5,3 @@ export const FILTER_OPTIONS: FilterOption[] = [
   { value: "installed", label: "Installed" },
   { value: "not-installed", label: "Not Installed" },
 ]
-

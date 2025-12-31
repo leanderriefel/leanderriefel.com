@@ -42,7 +42,8 @@ const tooltipContentVariants = cva(
 type TooltipPlacement = NonNullable<TooltipPrimitiveRootProps["placement"]>
 
 export interface TooltipProps
-  extends Omit<TooltipPrimitiveRootProps, "placement" | "gutter" | "openDelay" | "skipDelayDuration">,
+  extends
+    Omit<TooltipPrimitiveRootProps, "placement" | "gutter" | "openDelay" | "skipDelayDuration">,
     VariantProps<typeof tooltipContentVariants> {
   content: JSX.Element
   delayDuration?: number
@@ -92,9 +93,7 @@ export const Tooltip = (props: TooltipProps) => {
       disabled={local.disabled}
       {...rest}
     >
-      <TooltipPrimitive.Trigger class={cn("inline-flex cursor-pointer", local.class)}>
-        {local.children}
-      </TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Trigger class={cn("inline-flex", local.class)}>{local.children}</TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content class={cn(tooltipContentVariants({ variant: local.variant }), local.contentClass)}>
           {local.content}

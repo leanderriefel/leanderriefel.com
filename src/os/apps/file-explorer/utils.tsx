@@ -12,6 +12,7 @@ import {
   FileArchiveIcon,
   FileJsonIcon,
 } from "lucide-solid"
+import { cn } from "~/os/utils"
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return "0 B"
@@ -29,25 +30,25 @@ export const formatDate = (timestamp: number): string => {
   })
 }
 
-export const getFileIcon = (entry: FsEntry): JSX.Element => {
+export const getFileIcon = (entry: FsEntry, clazz: string = ""): JSX.Element => {
   if (entry.type === "dir") {
-    return <FolderIcon class="size-5 text-warning" />
+    return <FolderIcon class={cn("size-5 text-warning", clazz)} />
   }
 
   if (entry.type === "link") {
-    return <FolderIcon class="size-5 text-primary" />
+    return <FolderIcon class={cn("size-5 text-primary", clazz)} />
   }
 
   const fileEntry = entry as FileEntry
   const mime = fileEntry.mimeType ?? ""
   const name = fsEntryName(entry.path).toLowerCase()
 
-  if (mime.startsWith("image/")) return <ImageIcon class="size-5 text-primary" />
-  if (mime.startsWith("audio/")) return <Music2Icon class="size-5 text-success" />
-  if (mime.startsWith("video/")) return <VideoIcon class="size-5 text-destructive" />
+  if (mime.startsWith("image/")) return <ImageIcon class={cn("size-5 text-primary", clazz)} />
+  if (mime.startsWith("audio/")) return <Music2Icon class={cn("size-5 text-success", clazz)} />
+  if (mime.startsWith("video/")) return <VideoIcon class={cn("size-5 text-destructive", clazz)} />
   if (mime.includes("zip") || mime.includes("gzip") || mime.includes("tar"))
-    return <FileArchiveIcon class="size-5 text-warning" />
-  if (mime.includes("json")) return <FileJsonIcon class="size-5 text-warning" />
+    return <FileArchiveIcon class={cn("size-5 text-warning", clazz)} />
+  if (mime.includes("json")) return <FileJsonIcon class={cn("size-5 text-warning", clazz)} />
   if (
     name.endsWith(".tsx") ||
     name.endsWith(".ts") ||
@@ -56,11 +57,11 @@ export const getFileIcon = (entry: FsEntry): JSX.Element => {
     name.endsWith(".py") ||
     name.endsWith(".css")
   )
-    return <FileCodeIcon class="size-5 text-primary" />
+    return <FileCodeIcon class={cn("size-5 text-primary", clazz)} />
   if (mime.startsWith("text/") || name.endsWith(".md") || name.endsWith(".txt"))
-    return <FileTextIcon class="size-5 text-muted-foreground" />
+    return <FileTextIcon class={cn("size-5 text-muted-foreground", clazz)} />
 
-  return <FileIcon class="size-5 text-muted-foreground" />
+  return <FileIcon class={cn("size-5 text-muted-foreground", clazz)} />
 }
 
 export const joinPath = (base: FsPath, name: string): FsPath => {
@@ -82,4 +83,3 @@ export const getPathSegments = (path: FsPath): { name: string; path: FsPath }[] 
 
   return segments
 }
-

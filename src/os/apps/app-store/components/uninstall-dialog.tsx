@@ -1,13 +1,5 @@
 import type { Accessor } from "solid-js"
-import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/core"
+import { Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/core"
 
 type UninstallDialogProps = {
   open: Accessor<boolean>
@@ -25,9 +17,8 @@ export const UninstallDialog = (props: UninstallDialogProps) => {
           <DialogTitle>Uninstall app</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          Are you sure you want to uninstall{" "}
-          <span class="font-semibold text-foreground">{props.targetName()}</span>? This removes its `.app` file from
-          Programs.
+          Are you sure you want to uninstall <span class="font-semibold text-foreground">{props.targetName()}</span>?
+          This removes its `.app` file from Programs.
         </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={props.onCancel}>
@@ -41,4 +32,3 @@ export const UninstallDialog = (props: UninstallDialogProps) => {
     </Dialog>
   )
 }
-

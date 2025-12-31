@@ -117,4 +117,3 @@ export const Toolbar = (props: ToolbarProps) => {
     </div>
   )
 }
-

@@ -12,8 +12,9 @@ import { getInstalledApps } from "~/os/fs/programs"
 import { openApp } from "~/os/windows/open-windows"
 import { SettingsApp } from "~/os/apps/settings"
 import { OsLogo } from "./os-logo"
+import { cn } from "~/os/utils"
 
-export const StartMenu = () => {
+export const StartMenuButton = () => {
   const [open, setOpen] = createSignal(false)
 
   const groupedApps = createMemo(() => {
@@ -40,14 +41,16 @@ export const StartMenu = () => {
   }
 
   return (
-    <DropdownMenu side="top" align="start" sideOffset={10} open={open()} onOpenChange={setOpen}>
+    <DropdownMenu side="top" align="start" sideOffset={24} open={open()} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         aria-label="Open OS menu"
-        class="soft-chip group flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
+        class={cn(
+          "group flex size-8 items-center justify-center rounded-lg bg-background/50",
+          "border border-primary/25 bg-background/40 text-primary shadow-inner ring-1 ring-primary/10",
+          "transition-all focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none",
+        )}
       >
-        <div class="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-background/40 text-primary shadow-inner ring-1 ring-primary/10">
-          <OsLogo />
-        </div>
+        <OsLogo />
       </DropdownMenuTrigger>
       <DropdownMenuContent variant="glass" class="soft-panel max-h-[70vh] w-80 rounded-2xl p-3">
         <div class="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/70 px-3 py-2">
@@ -62,7 +65,7 @@ export const StartMenu = () => {
           <button
             type="button"
             aria-label="Open settings"
-            class="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
+            class="flex size-9 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
             onClick={() => launchApp(SettingsApp)}
           >
             <SettingsIcon class="size-4" />

@@ -51,7 +51,7 @@ export const DialogTrigger = (props: DialogTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children"])
 
   return (
-    <DialogPrimitive.Trigger class={cn("inline-flex cursor-pointer", local.class)} {...rest}>
+    <DialogPrimitive.Trigger class={cn("inline-flex", local.class)} {...rest}>
       {local.children}
     </DialogPrimitive.Trigger>
   )
@@ -79,7 +79,7 @@ export const DialogContent = (props: DialogContentProps) => {
       >
         {local.children}
         {local.showClose !== false && (
-          <DialogPrimitive.CloseButton class="absolute top-3 right-3 flex size-7 cursor-pointer items-center justify-center rounded-lg border border-border bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+          <DialogPrimitive.CloseButton class="absolute top-3 right-3 flex size-7 items-center justify-center rounded-lg border border-border bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
             <XIcon class="size-4" />
           </DialogPrimitive.CloseButton>
         )}
@@ -152,7 +152,7 @@ export type DialogCloseProps = ParentProps<Omit<DialogPrimitiveCloseButtonProps,
 export const DialogClose = (props: DialogCloseProps) => {
   const [local, rest] = splitProps(props, ["children", "class"])
   return (
-    <DialogPrimitive.CloseButton class={cn("inline-flex cursor-pointer", local.class)} {...rest}>
+    <DialogPrimitive.CloseButton class={cn("inline-flex", local.class)} {...rest}>
       {local.children}
     </DialogPrimitive.CloseButton>
   )
@@ -180,7 +180,7 @@ export const AlertDialog = (props: AlertDialogProps) => {
         </DialogHeader>
         <DialogFooter>
           <button
-            class="cursor-pointer rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
+            class="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
             onClick={() => {
               props.onCancel?.()
               props.onOpenChange?.(false)
@@ -190,7 +190,7 @@ export const AlertDialog = (props: AlertDialogProps) => {
           </button>
           <button
             class={cn(
-              "cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
               props.variant === "destructive"
                 ? "border border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 : "border border-primary bg-primary text-primary-foreground hover:bg-primary/90",

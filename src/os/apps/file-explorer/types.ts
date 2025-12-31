@@ -29,7 +29,4 @@ export type FileDialogOptions = {
   defaultFileName?: string
 }
 
-export type FileDialogResult =
-  | { cancelled: true }
-  | { cancelled: false; paths: FsPath[] }
-
+export type FileDialogResult = { cancelled: true } | { cancelled: false; paths: FsPath[] }

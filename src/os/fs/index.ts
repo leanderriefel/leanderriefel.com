@@ -1,4 +1,5 @@
 import Dexie, { Table } from "dexie"
+import { createEffect, createResource, onCleanup, type Accessor } from "solid-js"
 
 const DB_NAME = "os-fs"
 const DB_VERSION = 1
@@ -64,6 +65,13 @@ type WriteOptions = {
 type ReadOptions = {
   as?: "arrayBuffer" | "text" | "blob"
 }
+
+type ReadFileAs = NonNullable<ReadOptions["as"]>
+type ReadFileResult<TAs extends ReadFileAs | undefined> = TAs extends "text"
+  ? string | undefined
+  : TAs extends "blob"
+    ? Blob | undefined
+    : ArrayBuffer | undefined
 
 type RemoveOptions = {
   recursive?: boolean
@@ -172,6 +180,14 @@ async function notifyPathChanged(inputPath: FsPath) {
   if (p !== path) {
     const parentEntry = await _getEntry(p)
     notifySubscribers(p, parentEntry as FsEntry | undefined)
+
+    // If a directory is symlinked, changes inside the target directory should also
+    // invalidate subscribers of the symlink path (so listing resources for symlink
+    // dirs update just like normal dirs).
+    const symlinksToParent = await findSymlinksToTarget(p)
+    for (const symlinkEntry of symlinksToParent) {
+      notifySubscribers(symlinkEntry.path, parentEntry as FsEntry | undefined)
+    }
   }
 
   // Reverse symlink notification: notify all symlinks pointing to this path
@@ -409,15 +425,7 @@ async function _remove(inputPath: FsPath, options: RemoveOptions = {}) {
 // Initialization
 // -----------------------------------------------------------------------------
 
-export const DEFAULT_FOLDERS: FsPath[] = [
-  "/Programs",
-  "/Desktop",
-  "/Documents",
-  "/Pictures",
-  "/Music",
-  "/Videos",
-  "/Downloads",
-]
+export const DEFAULT_FOLDERS: FsPath[] = ["/Programs", "/Documents", "/Pictures", "/Music", "/Videos", "/Downloads"]
 
 let fsInitPromise: Promise<void> | null = null
 
@@ -638,6 +646,33 @@ export const list = async (inputPath: FsPath = "/"): Promise<FsEntry[]> => {
   return children.sort((a, b) => entryName(a.path).localeCompare(entryName(b.path)))
 }
 
+type DirEntriesResourceOptions = {
+  initialValue?: FsEntry[]
+}
+
+export const createFsListResource = (dir: Accessor<FsPath>, options: DirEntriesResourceOptions = {}) => {
+  const [resource, actions] = createResource<FsEntry[], FsPath>(
+    dir,
+    async (p) => {
+      try {
+        return await list(p)
+      } catch {
+        return []
+      }
+    },
+    { initialValue: options.initialValue ?? [] },
+  )
+
+  createEffect(() => {
+    const unsubscribe = subscribe<FsEntry>(dir(), () => {
+      void actions.refetch()
+    })
+    onCleanup(unsubscribe)
+  })
+
+  return [resource, actions] as const
+}
+
 export const writeFile = async (inputPath: FsPath, data: FileContent, options: WriteOptions = {}) => {
   await initFs()
   return _writeFile(inputPath, data, options)
@@ -674,6 +709,40 @@ export const readFile = async (
   if (as === "blob") return new Blob([arrayBuffer], { type: entry.mimeType })
   return arrayBuffer
 }
+
+type FileResourceOptions<TAs extends ReadFileAs | undefined> = {
+  as?: TAs
+  initialValue?: ReadFileResult<TAs>
+}
+
+export const createFsReadResource = <TAs extends ReadFileAs | undefined = undefined>(
+  path: Accessor<FsPath>,
+  options: FileResourceOptions<TAs> = {},
+) =>
+  (() => {
+    const [resource, actions] = createResource<ReadFileResult<TAs>, FsPath>(
+      path,
+      async (p) => {
+        try {
+          const result = await readFile(p, { as: options.as })
+          return result as ReadFileResult<TAs>
+        } catch {
+          return undefined as ReadFileResult<TAs>
+        }
+      },
+      { initialValue: options.initialValue as ReadFileResult<TAs> | undefined },
+    )
+
+    createEffect(() => {
+      const current = path()
+      const unsubscribe = subscribe<FsEntry>(current, () => {
+        void actions.refetch()
+      })
+      onCleanup(unsubscribe)
+    })
+
+    return [resource, actions] as const
+  })()
 
 export const readFileStream = async (inputPath: FsPath): Promise<ReadableStream<Uint8Array>> => {
   await initFs()

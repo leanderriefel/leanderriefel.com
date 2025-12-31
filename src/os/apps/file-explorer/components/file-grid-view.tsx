@@ -51,4 +51,3 @@ export const FileGridView = (props: FileGridViewProps) => {
     </div>
   )
 }
-

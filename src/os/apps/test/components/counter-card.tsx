@@ -34,4 +34,3 @@ export const CounterCard = (props: CounterCardProps) => {
     </Card>
   )
 }
-

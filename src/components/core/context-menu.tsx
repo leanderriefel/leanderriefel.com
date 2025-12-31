@@ -15,7 +15,7 @@ import { cn } from "~/os/utils"
 type ContextMenuPrimitiveSeparatorDivProps = ContextMenuPrimitiveSeparatorProps<"div">
 
 const contextMenuItemVariants = cva(
-  "relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none transition-colors",
+  "relative flex select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none transition-colors",
   {
     variants: {
       variant: {
@@ -46,7 +46,7 @@ export const ContextMenuTrigger = (props: ContextMenuTriggerProps) => {
   const [local, rest] = splitProps(props, ["class", "children", "disabled"])
 
   return (
-    <ContextMenuPrimitive.Trigger class={cn("cursor-pointer", local.class)} disabled={local.disabled} {...rest}>
+    <ContextMenuPrimitive.Trigger class={cn(local.class)} disabled={local.disabled} {...rest}>
       {local.children}
     </ContextMenuPrimitive.Trigger>
   )
@@ -138,7 +138,7 @@ export const ContextMenuSub = (props: ContextMenuSubProps) => {
     <ContextMenuPrimitive.Sub {...rest}>
       <ContextMenuPrimitive.SubTrigger
         class={cn(
-          "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+          "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
           local.class,
         )}
       >
@@ -175,7 +175,7 @@ export const ContextMenuCheckboxItem = (props: ContextMenuCheckboxItemProps) => 
   return (
     <ContextMenuPrimitive.CheckboxItem
       class={cn(
-        "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+        "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
         local.disabled && "pointer-events-none text-muted-foreground/50",
         local.class,
       )}

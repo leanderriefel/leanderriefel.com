@@ -52,4 +52,3 @@ export const ColorModeSelect = (props: ColorModeSelectProps) => {
     </Select>
   )
 }
-

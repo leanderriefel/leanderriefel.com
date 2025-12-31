@@ -1,9 +1,9 @@
-import { createStore } from "solid-js/store"
+import { createStore, SetStoreFunction } from "solid-js/store"
 import { App, OsWindow, AppClass, createAppInstance, LaunchContext } from "~/os"
 import { getValue, constrainToViewport } from "../utils/index"
 import { focus, removeFromStack, Focusable } from "~/os/focus"
-import { createEffect, createRoot, createSignal, on } from "solid-js"
-import { read, write } from "~/os/registry"
+import { Accessor, createEffect, createRoot, createSignal, on, Setter } from "solid-js"
+import { read, StructuredCloneable, write } from "~/os/registry"
 import { findInstalledAppByNameOrId, waitForInstalledApps } from "~/os/fs/programs"
 
 const WINDOW_STATE_REGISTRY_KEY = "os_windows_state"
@@ -15,37 +15,70 @@ type OpenAppOptions = {
   context?: LaunchContext
 }
 
-export const [openApps, setOpenApps] = createStore<{
-  apps: Array<OsWindow>
-}>({ apps: [] })
-
 type WindowGeometry = {
   position: { x: number; y: number }
   size: { width: number; height: number }
 }
 
-let hasLoadedLastGeometry = false
+// HMR-safe state getters
+const getOpenAppsStore = (): [{ apps: Array<OsWindow> }, SetStoreFunction<{ apps: Array<OsWindow> }>] => {
+  if (!globalThis.__osOpenAppsStore) {
+    globalThis.__osOpenAppsStore = createStore<{ apps: Array<OsWindow> }>({ apps: [] })
+  }
+  return globalThis.__osOpenAppsStore
+}
+
+const getHydrationReadySignal = (): [Accessor<boolean>, Setter<boolean>] => {
+  if (!globalThis.__osHydrationReady) {
+    globalThis.__osHydrationReady = createSignal(false)
+  }
+  return globalThis.__osHydrationReady
+}
+
+const getWindowsHydrationPromise = (): Promise<void> | null => {
+  return globalThis.__osWindowsHydrationPromise ?? null
+}
+
+const setWindowsHydrationPromise = (promise: Promise<void> | null) => {
+  globalThis.__osWindowsHydrationPromise = promise
+}
+
+const getLastWindowGeometry = (): Record<string, WindowGeometry> => {
+  if (!globalThis.__osLastWindowGeometry) {
+    globalThis.__osLastWindowGeometry = {}
+  }
+  return globalThis.__osLastWindowGeometry
+}
+
+const getHasLoadedLastGeometry = (): boolean => {
+  return globalThis.__osHasLoadedLastGeometry ?? false
+}
+
+const setHasLoadedLastGeometry = (value: boolean) => {
+  globalThis.__osHasLoadedLastGeometry = value
+}
+
+export const [openApps, setOpenApps] = getOpenAppsStore()
+const [hydrationReady, setHydrationReady] = getHydrationReadySignal()
+
 let lastGeometryLoadPromise: Promise<void> | null = null
-let lastWindowGeometry: Record<string, WindowGeometry> = {}
-let windowsHydrationPromise: Promise<void> | null = null
-const [hydrationReady, setHydrationReady] = createSignal(false)
 
 const getAppName = (app: App) => (app.constructor as AppClass).appName
 
 const ensureLastWindowGeometryLoaded = async () => {
-  if (hasLoadedLastGeometry || typeof window === "undefined") return
+  if (getHasLoadedLastGeometry() || typeof window === "undefined") return
 
   if (!lastGeometryLoadPromise) {
     lastGeometryLoadPromise = (async () => {
       try {
         const saved = await read<Record<string, WindowGeometry>>(LAST_GEOMETRY_REGISTRY_KEY)
         if (saved) {
-          lastWindowGeometry = saved
+          Object.assign(getLastWindowGeometry(), saved)
         }
       } catch (e) {
         console.error("Failed to load last window geometry", e)
       } finally {
-        hasLoadedLastGeometry = true
+        setHasLoadedLastGeometry(true)
       }
     })()
   }
@@ -56,7 +89,7 @@ const ensureLastWindowGeometryLoaded = async () => {
 const persistLastWindowGeometry = async () => {
   if (typeof window === "undefined") return
   try {
-    await write(LAST_GEOMETRY_REGISTRY_KEY, lastWindowGeometry)
+    await write(LAST_GEOMETRY_REGISTRY_KEY, getLastWindowGeometry())
   } catch (e) {
     console.error("Failed to save last window geometry", e)
   }
@@ -65,14 +98,14 @@ const persistLastWindowGeometry = async () => {
 const rememberWindowGeometry = async (appName: string, geometry: WindowGeometry) => {
   try {
     await ensureLastWindowGeometryLoaded()
-    lastWindowGeometry[appName] = geometry
+    getLastWindowGeometry()[appName] = geometry
     await persistLastWindowGeometry()
   } catch (e) {
     console.error("Failed to remember window geometry", e)
   }
 }
 
-const getRememberedWindowGeometry = (appName: string) => lastWindowGeometry[appName]
+const getRememberedWindowGeometry = (appName: string) => getLastWindowGeometry()[appName]
 
 interface SavedWindow {
   id: string
@@ -81,6 +114,7 @@ interface SavedWindow {
   position: { x: number; y: number }
   size: { width: number; height: number }
   display: "default" | "minimized" | "maximized"
+  [key: string]: StructuredCloneable
 }
 
 const hydrateWindowsFromRegistry = async () => {
@@ -126,10 +160,12 @@ const hydrateWindowsFromRegistry = async () => {
 }
 
 const ensureWindowHydration = () => {
-  if (!windowsHydrationPromise) {
-    windowsHydrationPromise = hydrateWindowsFromRegistry()
+  let promise = getWindowsHydrationPromise()
+  if (!promise) {
+    promise = hydrateWindowsFromRegistry()
+    setWindowsHydrationPromise(promise)
   }
-  return windowsHydrationPromise
+  return promise
 }
 
 export const waitForWindowHydration = async () => {

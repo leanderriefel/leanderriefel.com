@@ -159,8 +159,7 @@ export const OpenWithDialog = (props: OpenWithDialogProps) => {
             {(target) => (
               <div class="space-y-4">
                 <p class="text-sm text-muted-foreground">
-                  Choose an app to open{" "}
-                  <span class="font-medium text-foreground">{fsEntryName(target().path)}</span>
+                  Choose an app to open <span class="font-medium text-foreground">{fsEntryName(target().path)}</span>
                 </p>
                 <div class="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-1">
                   <For
@@ -233,4 +232,3 @@ export const OpenWithDialog = (props: OpenWithDialogProps) => {
     </Dialog>
   )
 }
-

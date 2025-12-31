@@ -53,4 +53,3 @@ export const AppCard = (props: AppCardProps) => {
     </div>
   )
 }
-

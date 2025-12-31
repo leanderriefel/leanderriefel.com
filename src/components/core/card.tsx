@@ -2,7 +2,7 @@ import { ParentProps } from "solid-js"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "~/os/utils"
 
-const cardVariants = cva("overflow-hidden rounded-xl transition-all duration-300", {
+const cardVariants = cva("overflow-hidden rounded-xl transition-all", {
   variants: {
     variant: {
       default: "border border-border bg-card/50 backdrop-blur-md shadow-sm hover:bg-card/60",

@@ -140,23 +140,19 @@ export class TextEditorApp extends App {
   render = () => {
     return (
       <div class="flex h-full flex-col bg-background">
-        <Show when={this.openDialogOpen[0]()}>
-          <FileDialog
-            open={this.openDialogOpen[0]}
-            onOpenChange={this.openDialogOpen[1]}
-            options={this.getOpenDialogOptions()}
-            onResult={this.handleOpenDialogResult}
-          />
-        </Show>
+        <FileDialog
+          open={this.openDialogOpen[0]}
+          onOpenChange={this.openDialogOpen[1]}
+          options={this.getOpenDialogOptions()}
+          onResult={this.handleOpenDialogResult}
+        />
 
-        <Show when={this.saveDialogOpen[0]()}>
-          <FileDialog
-            open={this.saveDialogOpen[0]}
-            onOpenChange={this.saveDialogOpen[1]}
-            options={this.getSaveDialogOptions()}
-            onResult={this.handleSaveDialogResult}
-          />
-        </Show>
+        <FileDialog
+          open={this.saveDialogOpen[0]}
+          onOpenChange={this.saveDialogOpen[1]}
+          options={this.getSaveDialogOptions()}
+          onResult={this.handleSaveDialogResult}
+        />
 
         <Toolbar
           status={this.status[0]}

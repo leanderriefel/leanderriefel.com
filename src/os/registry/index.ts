@@ -198,7 +198,7 @@ export const subscribe = <T extends RegistryValue>(key: string, callback: Subscr
   }
 }
 
-export const createPersistedSignal = <T extends RegistryValue>(
+export const createRegistrySignal = <T extends RegistryValue>(
   key: string,
   defaultValue: T,
 ): [Accessor<T>, (value: T | ((prev: T) => T)) => Promise<void>] => {
@@ -221,13 +221,13 @@ export const createPersistedSignal = <T extends RegistryValue>(
 
   onCleanup(unsubscribe)
 
-  const setPersistedValue = async (newValue: T | ((prev: T) => T)): Promise<void> => {
+  const setRegistryValue = async (newValue: T | ((prev: T) => T)): Promise<void> => {
     const resolvedValue = typeof newValue === "function" ? (newValue as (prev: T) => T)(value()) : newValue
     setValue(() => resolvedValue)
     await write(key, resolvedValue)
   }
 
-  return [value, setPersistedValue]
+  return [value, setRegistryValue]
 }
 
 export const writeBatch = async (entries: Array<[string, RegistryValue]>): Promise<void> => {

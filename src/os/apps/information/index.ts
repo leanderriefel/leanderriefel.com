@@ -1,2 +1,1 @@
 export { InformationApp } from "./information"
-

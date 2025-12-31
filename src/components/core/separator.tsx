@@ -25,8 +25,7 @@ const separatorVariants = cva("shrink-0 transition-colors", {
 })
 
 export interface SeparatorProps
-  extends VariantProps<typeof separatorVariants>,
-    Omit<SeparatorPrimitiveDivProps, "children" | "orientation"> {
+  extends VariantProps<typeof separatorVariants>, Omit<SeparatorPrimitiveDivProps, "children" | "orientation"> {
   class?: string
 }
 

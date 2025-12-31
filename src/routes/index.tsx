@@ -7,9 +7,9 @@ import { getValue } from "~/os/utils"
 import { getInstalledAppIds, getInstalledApps, waitForInstalledApps } from "~/os/fs/programs"
 import { openApp, openApps, waitForWindowHydration } from "~/os/windows/open-windows"
 import { WindowManager } from "~/os/windows/window-manager"
-import { ClockBar, StartMenu, TaskbarButton, TaskbarButtons } from "~/components/taskbar"
-import { Desktop } from "~/os/desktop"
+import { ClockBar, StartMenuButton, TaskbarButton, TaskbarButtons, TaskbarControls } from "~/components/taskbar"
 import { clientOnly } from "@solidjs/start"
+import { cn } from "~/os/utils"
 
 import { initRegistry } from "~/os/registry"
 
@@ -53,24 +53,32 @@ function Home() {
               radial-gradient(ellipse 130% 60% at 75% 15%, rgba(59, 130, 246, var(--gradient-alpha-blue)), transparent 65%),
               radial-gradient(ellipse 80% 90% at 20% 30%, rgba(236, 72, 153, var(--gradient-alpha-pink)), transparent 50%),
               radial-gradient(ellipse 100% 40% at 60% 70%, rgba(16, 185, 129, var(--gradient-alpha-green)), transparent 45%),
-              var(--background)
+              var(--color-desktop-background)
             `,
           }}
         />
 
-        <Desktop />
-
         <WindowManager />
 
         {/* Taskbar */}
-        <div class="absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3">
-          <StartMenu />
-          <div class="soft-glass flex h-10 w-[90vw] items-center justify-center gap-x-3 rounded-2xl px-4 sm:w-[55vw]">
+        <div class="absolute inset-x-0 bottom-4 z-50 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4">
+          <div class="flex w-full items-center justify-start gap-3">
+            <TaskbarControls />
+          </div>
+          <div
+            class={cn(
+              "flex h-12 w-[90vw] items-center justify-center gap-x-3 rounded-2xl px-4 sm:w-[55vw] sm:max-w-4xl",
+              "bg-background/50",
+            )}
+          >
             <TaskbarButtons>
+              <StartMenuButton />
               <For each={getInstalledApps()}>{(appClass) => <TaskbarButton appClass={appClass} />}</For>
             </TaskbarButtons>
           </div>
-          <ClockBar />
+          <div class="flex w-full items-center justify-end gap-3">
+            <ClockBar />
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
-import { createSignal, createSelector, createRoot } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createSignal, createSelector, createRoot, Accessor, Setter } from "solid-js"
+import { createStore, SetStoreFunction } from "solid-js/store"
 
 // Types
 export type FocusableId = string
@@ -7,13 +7,29 @@ export type Focusable = FocusableId | { id: FocusableId }
 
 const getId = (item: Focusable): string => (typeof item === "string" ? item : item.id)
 
-const focusState = createRoot(() => {
-  const [focusedId, setFocusedId] = createSignal<string | null>(null)
-  const isFocused = createSelector(focusedId)
-  const [focusStack, setFocusStack] = createStore<{ stack: string[] }>({ stack: [] })
+type FocusState = {
+  focusedId: Accessor<string | null>
+  setFocusedId: Setter<string | null>
+  isFocused: (id: string) => boolean
+  focusStack: { stack: string[] }
+  setFocusStack: SetStoreFunction<{ stack: string[] }>
+}
 
-  return { focusedId, setFocusedId, isFocused, focusStack, setFocusStack }
-})
+// HMR-safe state getter
+const getFocusState = (): FocusState => {
+  if (!globalThis.__osFocusState) {
+    globalThis.__osFocusState = createRoot(() => {
+      const [focusedId, setFocusedId] = createSignal<string | null>(null)
+      const isFocused = createSelector(focusedId)
+      const [focusStack, setFocusStack] = createStore<{ stack: string[] }>({ stack: [] })
+
+      return { focusedId, setFocusedId, isFocused, focusStack, setFocusStack }
+    })
+  }
+  return globalThis.__osFocusState
+}
+
+const focusState = getFocusState()
 
 const { focusedId, setFocusedId, isFocused, focusStack, setFocusStack } = focusState
 
