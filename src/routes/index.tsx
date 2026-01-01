@@ -10,8 +10,8 @@ import { WindowManager } from "~/os/windows/window-manager"
 import { ClockBar, StartMenuButton, TaskbarButton, TaskbarButtons, TaskbarControls } from "~/components/taskbar"
 import { clientOnly } from "@solidjs/start"
 import { cn } from "~/os/utils"
-
 import { initRegistry } from "~/os/registry"
+import { Desktop } from "~/os/desktop/desktop"
 
 const INFO_AUTOLAUNCH_KEY = "os_information_autolaunched"
 
@@ -45,6 +45,7 @@ function Home() {
   return (
     <div class="relative h-screen w-screen overflow-hidden bg-background selection:bg-primary/20">
       <div class="relative h-dvh w-dvw">
+        <Desktop />
         <div
           class="absolute inset-0 z-0"
           style={{

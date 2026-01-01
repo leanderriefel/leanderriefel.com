@@ -7,7 +7,7 @@ const PROGRAMS_PATH = "/Programs" as FsPath
 const PROGRAM_FILE_EXT = ".app"
 const SEED_REGISTRY_KEY = "os_programs_seeded_v1"
 
-// HMR-safe state getters
+// HMR-safe state getters - signals are created lazily on first access
 const getInstalledAppsSignal = (): [Accessor<AppClass[]>, Setter<AppClass[]>] => {
   if (!globalThis.__osInstalledApps) {
     globalThis.__osInstalledApps = createSignal<AppClass[]>([])
@@ -29,9 +29,6 @@ const getEnsureProgramsPromise = (): Promise<void> | null => {
 const setEnsureProgramsPromise = (promise: Promise<void> | null) => {
   globalThis.__osEnsureProgramsPromise = promise
 }
-
-const [installedApps, setInstalledApps] = getInstalledAppsSignal()
-const [installedAppIds, setInstalledAppIds] = getInstalledAppIdsSignal()
 
 let programsWatcherUnsubscribe: (() => void) | null = null
 
@@ -96,6 +93,9 @@ const seedDefaultPrograms = async () => {
 }
 
 const loadInstalledApps = async () => {
+  const [, setInstalledAppIds] = getInstalledAppIdsSignal()
+  const [, setInstalledApps] = getInstalledAppsSignal()
+
   if (!isClient()) {
     setInstalledAppIds(new Set<string>())
     setInstalledApps([])
@@ -156,15 +156,25 @@ export const waitForInstalledApps = async () => {
   await promise
 }
 
-export const getInstalledApps = () => installedApps()
-export const getInstalledAppIds = () => installedAppIds()
+export const getInstalledApps = () => {
+  const [installedApps] = getInstalledAppsSignal()
+  return installedApps()
+}
+
+export const getInstalledAppIds = () => {
+  const [installedAppIds] = getInstalledAppIdsSignal()
+  return installedAppIds()
+}
+
 export const isProtectedAppId = (appId: string) => getProtectedAppIds().has(appId)
 
 export const findInstalledApp = (predicate: (app: AppClass) => boolean): AppClass | undefined => {
+  const [installedApps] = getInstalledAppsSignal()
   return installedApps().find(predicate)
 }
 
 export const findInstalledAppByNameOrId = (value: string): AppClass | undefined => {
+  const [installedApps] = getInstalledAppsSignal()
   return installedApps().find((app) => app.appId === value || app.appName === value)
 }
 

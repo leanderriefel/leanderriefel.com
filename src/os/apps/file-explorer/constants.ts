@@ -1,5 +1,5 @@
 import type { FsPath } from "~/os/fs"
-import { HomeIcon, FileTextIcon, ImageIcon, Music2Icon, VideoIcon, DownloadIcon } from "lucide-solid"
+import { HomeIcon, FileTextIcon, ImageIcon, Music2Icon, VideoIcon, DownloadIcon, MonitorIcon } from "lucide-solid"
 import type { QuickAccessItem } from "./types"
 
 export const QUICK_ACCESS: QuickAccessItem[] = [
@@ -9,4 +9,5 @@ export const QUICK_ACCESS: QuickAccessItem[] = [
   { name: "Music", path: "/Music" as FsPath, icon: Music2Icon },
   { name: "Videos", path: "/Videos" as FsPath, icon: VideoIcon },
   { name: "Downloads", path: "/Downloads" as FsPath, icon: DownloadIcon },
+  { name: "Desktop", path: "/Desktop" as FsPath, icon: MonitorIcon },
 ]

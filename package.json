@@ -9,7 +9,14 @@
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "oxlint --fix",
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@kobalte/core": "^0.13.11",
@@ -26,10 +33,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@oxlint/win32-x64": "^1.36.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^25.0.3",
     "eslint-plugin-solid": "^0.14.5",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "oxlint": "^1.36.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",

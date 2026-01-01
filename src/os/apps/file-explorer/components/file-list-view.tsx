@@ -1,26 +1,39 @@
-import { For, type Accessor, type JSX } from "solid-js"
+import { For, Show, type Accessor, type JSX, type Signal } from "solid-js"
 import type { FsPath, FsEntry, FileEntry } from "~/os/fs"
 import { entryName as fsEntryName } from "~/os/fs"
 import { cn } from "~/os/utils"
 import { ContextMenu, ContextMenuTrigger } from "~/components/core"
 import { getFileIcon, formatFileSize, formatDate } from "../utils"
 import type { SortBy, SortOrder } from "../types"
+import { useMarqueeSelection, type MarqueeRect } from "./marquee-selection"
 
 type FileListViewProps = {
   entries: Accessor<FsEntry[]>
-  selectedEntry: Accessor<FsPath | null>
+  isSelected: (path: FsPath) => boolean
   sortBy: Accessor<SortBy>
   sortOrder: Accessor<SortOrder>
-  onSelect: (path: FsPath) => void
+  onSelect: (entry: FsEntry, event: MouseEvent) => void
   onDoubleClick: (entry: FsEntry) => void
   onToggleSort: (sortBy: SortBy) => void
   renderContextMenu: (entry: FsEntry) => JSX.Element
+  containerRef: Signal<HTMLElement | undefined>
+  onMarqueeSelection: (rect: MarqueeRect) => void
+  onMarqueeEnd: (rect: MarqueeRect) => void
+  onClearSelection: () => void
 }
 
 export const FileListView = (props: FileListViewProps) => {
+  let containerEl: HTMLDivElement | undefined
+
+  const marquee = useMarqueeSelection(() => containerEl, {
+    onSelectionChange: props.onMarqueeSelection,
+    onSelectionEnd: props.onMarqueeEnd,
+    onClear: props.onClearSelection,
+  })
+
   const sortIndicator = (column: SortBy) => {
     if (props.sortBy() !== column) return ""
-    return props.sortOrder() === "asc" ? "↑" : "↓"
+    return props.sortOrder() === "asc" ? "\u2191" : "\u2193"
   }
 
   return (
@@ -39,17 +52,26 @@ export const FileListView = (props: FileListViewProps) => {
           Size {sortIndicator("size")}
         </button>
       </div>
-      <div class="flex-1 space-y-0.5 overflow-auto p-2">
+      <div
+        ref={(el) => {
+          containerEl = el
+          props.containerRef[1](el)
+        }}
+        class="relative flex-1 space-y-0.5 overflow-auto p-2"
+        tabIndex={0}
+      >
         <For each={props.entries()}>
           {(entry) => (
             <ContextMenu>
               <ContextMenuTrigger>
                 <button
+                  data-file-entry
+                  data-file-path={entry.path}
                   class={cn(
                     "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent",
-                    props.selectedEntry() === entry.path && "bg-accent",
+                    props.isSelected(entry.path) && "bg-accent",
                   )}
-                  onClick={() => props.onSelect(entry.path)}
+                  onClick={(e) => props.onSelect(entry, e)}
                   onDblClick={() => props.onDoubleClick(entry)}
                 >
                   {getFileIcon(entry)}
@@ -69,6 +91,12 @@ export const FileListView = (props: FileListViewProps) => {
             </ContextMenu>
           )}
         </For>
+        <Show when={marquee.isSelecting() && marquee.hasDragged()}>
+          <div
+            class="pointer-events-none absolute z-50 border border-primary/50 bg-primary/10"
+            style={marquee.selectionStyle()}
+          />
+        </Show>
       </div>
     </>
   )

@@ -167,7 +167,7 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
           class="relative flex aspect-square size-8 items-center justify-center transition-all hover:-translate-y-0.5"
         >
           {/* Icon Representation */}
-          <div class="flex size-full items-center justify-center rounded-lg border border-border bg-secondary shadow-sm transition-all group-hover:bg-secondary/80 group-hover:shadow-sm group-active:scale-95">
+          <div class="flex size-full items-center justify-center rounded-lg border border-border bg-secondary shadow-sm transition-all [corner-shape:squircle] group-hover:bg-secondary/80 group-hover:shadow-sm group-active:scale-95 supports-corner-shape:rounded-full">
             <span class="font-mono text-xs font-bold text-muted-foreground transition-colors group-hover:text-foreground">
               {props.appClass.appName[0]}
             </span>

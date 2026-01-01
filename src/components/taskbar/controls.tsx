@@ -1,14 +1,14 @@
 import { createSignal, Show } from "solid-js"
 import { motion, AnimatePresence } from "motion-solid"
 import { cn } from "~/os/utils"
-import { Volume2Icon, WifiIcon, XIcon } from "lucide-solid"
+import { Volume2Icon, WifiIcon } from "lucide-solid"
 import { Button } from "~/components/core"
 
 export const TaskbarControls = () => {
   const [expanded, setExpanded] = createSignal<"volume" | "wifi" | null>(null)
 
   return (
-    <div class="flex w-40 items-center justify-start">
+    <div class="flex w-full items-center justify-start">
       <motion.div
         layout
         layoutDependencies={[expanded]}
@@ -17,8 +17,8 @@ export const TaskbarControls = () => {
           "border-radius": "16px",
         }}
       >
-        <div class="flex items-center justify-start">
-          <motion.div layout="position" class="flex items-center pr-2">
+        <div class="relative flex items-center justify-start overflow-hidden">
+          <motion.div layout class="flex items-center pr-2">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -33,26 +33,28 @@ export const TaskbarControls = () => {
           <AnimatePresence>
             <Show when={expanded() === "volume"}>
               <motion.div
+                layout
                 initial={{ width: 0, opacity: 0, filter: "blur(4px)", "margin-left": 0 }}
                 animate={{ width: "auto", opacity: 1, filter: "blur(0px)", "margin-left": 8 }}
                 exit={{ width: 0, opacity: 0, filter: "blur(4px)", "margin-left": 0 }}
                 class="flex items-center justify-center overflow-hidden"
               >
-                <input type="range" class="mr-2 w-40" />
+                <input type="range" class="mr-2 w-full" />
               </motion.div>
             </Show>
             <Show when={expanded() === "wifi"}>
               <motion.div
+                layout
                 initial={{ width: 0, opacity: 0, "margin-left": 0 }}
                 animate={{ width: "auto", opacity: 1, "margin-left": 4 }}
                 exit={{ width: 0, opacity: 0, "margin-left": 0 }}
                 class="flex items-center justify-center overflow-hidden"
               >
-                <div class="flex w-40 text-sm">
-                  <Button variant="ghost" class="w-20">
+                <div class="grid w-full grid-cols-2 text-sm">
+                  <Button variant="ghost" class="w-full">
                     WiFi On
                   </Button>
-                  <Button variant="ghost" class="w-20">
+                  <Button variant="ghost" class="w-full">
                     WiFi Off
                   </Button>
                 </div>

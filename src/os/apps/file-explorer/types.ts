@@ -5,7 +5,7 @@ export type SortBy = "name" | "size" | "modified" | "type"
 export type SortOrder = "asc" | "desc"
 
 export type ClipboardItem = {
-  path: FsPath
+  paths: FsPath[]
   operation: "copy" | "cut"
 }
 

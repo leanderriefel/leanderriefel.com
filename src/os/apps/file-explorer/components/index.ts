@@ -7,3 +7,4 @@ export { NewItemDialog, RenameDialog, DeleteConfirmDialog, OpenWithDialog } from
 export { StatusBar } from "./status-bar"
 export { EmptyFolder } from "./empty-state"
 export { FileDialog } from "./file-dialog"
+export { useMarqueeSelection, elementIntersectsRect, type MarqueeRect } from "./marquee-selection"

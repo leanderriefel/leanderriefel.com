@@ -5,6 +5,9 @@ import type { PluginOption } from "vite"
 export default defineConfig({
   vite: {
     plugins: [tailwindcss() as PluginOption],
+    resolve: {
+      dedupe: ["solid-js", "solid-js/web"],
+    },
   },
   server: {
     // eslint-disable-next-line no-undef

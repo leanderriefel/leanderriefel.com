@@ -2,7 +2,8 @@ import Dexie, { Table } from "dexie"
 import { createEffect, createResource, onCleanup, type Accessor } from "solid-js"
 
 const DB_NAME = "os-fs"
-const DB_VERSION = 1
+// oxlint-disable-next-line no-unused-vars
+const DB_VERSION = 2
 const META_STORE = "meta"
 const CHUNK_STORE = "chunks"
 const DEFAULT_CHUNK_SIZE = 256 * 1024
@@ -21,6 +22,7 @@ export type FileContent =
 
 export interface BaseEntry {
   path: FsPath
+  stableId: string
   created: number
   type: EntryType
 }
@@ -92,10 +94,25 @@ class FsDexie extends Dexie {
 
   constructor() {
     super(DB_NAME)
-    this.version(DB_VERSION).stores({
+    this.version(1).stores({
       [META_STORE]: "&path,parent",
       [CHUNK_STORE]: "&key,path,index",
     })
+
+    this.version(2)
+      .stores({
+        [META_STORE]: "&path,parent,stableId",
+        [CHUNK_STORE]: "&key,path,index",
+      })
+      .upgrade(async (tx) => {
+        const allEntries = await tx.table(META_STORE).toArray()
+        for (const entry of allEntries) {
+          if (!("stableId" in entry) || !(entry as any).stableId) {
+            ;(entry as any).stableId = generateStableId()
+            await tx.table(META_STORE).put(entry)
+          }
+        }
+      })
   }
 }
 
@@ -107,6 +124,10 @@ function ensureClient() {
   if (typeof indexedDB === "undefined") {
     throw new Error("IndexedDB is not available in this environment")
   }
+}
+
+function generateStableId(): string {
+  return crypto.randomUUID()
 }
 
 const db = new FsDexie()
@@ -236,6 +257,11 @@ async function _getEntryRaw(path: FsPath): Promise<StoredEntry | undefined> {
   return database.meta.get(path)
 }
 
+async function _getEntryByStableId(stableId: string): Promise<StoredEntry | undefined> {
+  const database = await ensureDbOpen()
+  return database.meta.where("stableId").equals(stableId).first()
+}
+
 async function _getChildren(dir: FsPath): Promise<StoredEntry[]> {
   const database = await ensureDbOpen()
   const children = await database.meta.where("parent").equals(dir).toArray()
@@ -304,6 +330,7 @@ async function _ensureDirExists(path: FsPath, { parents }: { parents?: boolean }
     path,
     parent,
     type: "dir",
+    stableId: generateStableId(),
     created: now,
   }
   const database = await ensureDbOpen()
@@ -372,6 +399,7 @@ async function _writeFile(inputPath: FsPath, data: FileContent, options: WriteOp
       path,
       parent,
       type: "file",
+      stableId: existing?.stableId ?? generateStableId(),
       created: existing?.created ?? now,
       modified: now,
       size: totalSize,
@@ -425,7 +453,15 @@ async function _remove(inputPath: FsPath, options: RemoveOptions = {}) {
 // Initialization
 // -----------------------------------------------------------------------------
 
-export const DEFAULT_FOLDERS: FsPath[] = ["/Programs", "/Documents", "/Pictures", "/Music", "/Videos", "/Downloads"]
+export const DEFAULT_FOLDERS: FsPath[] = [
+  "/Programs",
+  "/Documents",
+  "/Pictures",
+  "/Music",
+  "/Videos",
+  "/Downloads",
+  "/Desktop",
+]
 
 let fsInitPromise: Promise<void> | null = null
 
@@ -561,6 +597,11 @@ export const getEntryRaw = async (path: FsPath): Promise<StoredEntry | undefined
   return _getEntryRaw(path)
 }
 
+export const getEntryByStableId = async (stableId: string): Promise<StoredEntry | undefined> => {
+  await initFs()
+  return _getEntryByStableId(stableId)
+}
+
 export const ensureDirExists = async (path: FsPath, { parents }: { parents?: boolean }) => {
   await initFs()
   return _ensureDirExists(path, { parents })
@@ -598,6 +639,7 @@ export const symlink = async (linkPath: FsPath, targetPath: FsPath, options: { p
     path: link,
     parent,
     type: "link",
+    stableId: generateStableId(),
     target,
     created: now,
     modified: now,
@@ -1042,6 +1084,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
         path: currentDestPath,
         parent: parentPath(currentDestPath),
         type: "link",
+        stableId: generateStableId(),
         target: entry.target,
         created: now,
         modified: now,
@@ -1053,6 +1096,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
         path: currentDestPath,
         parent: parentPath(currentDestPath),
         type: "dir",
+        stableId: generateStableId(),
         created: now,
       }
       await database.meta.put(dirEntry)
@@ -1085,6 +1129,7 @@ export const copy = async (srcPath: FsPath, destPath: FsPath, options: CopyOptio
         path: currentDestPath,
         parent: parentPath(currentDestPath),
         type: "file",
+        stableId: generateStableId(),
         created: now,
         modified: now,
         size: entry.size,

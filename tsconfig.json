@@ -4,9 +4,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "preserveSymlinks": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "preserveSymlinks": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "allowJs": true,
@@ -18,5 +18,7 @@
     "paths": {
       "~/*": ["./src/*"]
     }
-  }
+  },
+  "exclude": ["node_modules", ".output", "dist", ".vinxi"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "*.ts"]
 }

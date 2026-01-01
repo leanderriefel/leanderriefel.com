@@ -16,6 +16,7 @@ import {
 
 type EntryContextMenuProps = {
   entry: FsEntry
+  selectedCount: number
   onOpen: () => void
   onOpenWith: () => void
   onCopy: () => void
@@ -25,35 +26,41 @@ type EntryContextMenuProps = {
 }
 
 export const EntryContextMenu = (props: EntryContextMenuProps) => {
+  const isBulk = () => props.selectedCount > 1
+
   return (
     <ContextMenuContent>
-      <ContextMenuItem onSelect={props.onOpen}>
-        <FolderOpenIcon class="mr-2 size-4" />
-        Open
-      </ContextMenuItem>
-      <Show when={props.entry.type === "file"}>
-        <ContextMenuItem onSelect={props.onOpenWith}>
-          <AppWindowIcon class="mr-2 size-4" />
-          Open with...
+      <Show when={!isBulk()}>
+        <ContextMenuItem onSelect={props.onOpen}>
+          <FolderOpenIcon class="mr-2 size-4" />
+          Open
         </ContextMenuItem>
+        <Show when={props.entry.type === "file"}>
+          <ContextMenuItem onSelect={props.onOpenWith}>
+            <AppWindowIcon class="mr-2 size-4" />
+            Open with...
+          </ContextMenuItem>
+        </Show>
+        <ContextMenuSeparator />
       </Show>
-      <ContextMenuSeparator />
       <ContextMenuItem onSelect={props.onCopy}>
         <CopyIcon class="mr-2 size-4" />
-        Copy
+        {isBulk() ? `Copy ${props.selectedCount} items` : "Copy"}
       </ContextMenuItem>
       <ContextMenuItem onSelect={props.onCut}>
         <ScissorsIcon class="mr-2 size-4" />
-        Cut
+        {isBulk() ? `Cut ${props.selectedCount} items` : "Cut"}
       </ContextMenuItem>
       <ContextMenuSeparator />
-      <ContextMenuItem onSelect={props.onRename}>
-        <PencilIcon class="mr-2 size-4" />
-        Rename
-      </ContextMenuItem>
+      <Show when={!isBulk()}>
+        <ContextMenuItem onSelect={props.onRename}>
+          <PencilIcon class="mr-2 size-4" />
+          Rename
+        </ContextMenuItem>
+      </Show>
       <ContextMenuItem variant="destructive" onSelect={props.onDelete}>
         <Trash2Icon class="mr-2 size-4" />
-        Delete
+        {isBulk() ? `Delete ${props.selectedCount} items` : "Delete"}
       </ContextMenuItem>
     </ContextMenuContent>
   )

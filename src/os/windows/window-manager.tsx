@@ -277,7 +277,7 @@ export const Window = (props: OsWindow) => {
                   aria-label="Minimize"
                   variant="warning"
                   size="icon-sm"
-                  class="size-6 rounded-md"
+                  class="size-6 rounded-md [corner-shape:squircle] supports-corner-shape:rounded-full"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMinimize}
                 />
@@ -294,7 +294,7 @@ export const Window = (props: OsWindow) => {
                   aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
                   variant="success"
                   size="icon-sm"
-                  class="size-6 rounded-md"
+                  class="size-6 rounded-md [corner-shape:squircle] supports-corner-shape:rounded-full"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleMaximize}
                 />
@@ -305,7 +305,7 @@ export const Window = (props: OsWindow) => {
                   aria-label="Close"
                   variant="destructive"
                   size="icon-sm"
-                  class="size-6 rounded-md"
+                  class="size-6 rounded-md [corner-shape:squircle] supports-corner-shape:rounded-full"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={handleClose}
                 />

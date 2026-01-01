@@ -52,3 +52,4 @@ export const constrainToViewport = (
 }
 
 export * from "./fuzzy-search"
+export * from "./keybindings"
