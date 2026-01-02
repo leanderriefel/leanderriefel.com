@@ -1,4 +1,4 @@
-import { JSX, splitProps } from "solid-js"
+import { JSX, Show, splitProps } from "solid-js"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "~/os/utils"
 
@@ -84,8 +84,12 @@ export const FormField = (props: FormFieldProps) => {
         </label>
       )}
       {props.children}
-      {props.hint && !props.error && <p class="text-xs text-muted-foreground">{props.hint}</p>}
-      {props.error && <p class="text-xs text-destructive">{props.error}</p>}
+      <Show when={props.hint && !props.error}>
+        <p class="text-xs text-muted-foreground">{props.hint}</p>
+      </Show>
+      <Show when={props.error}>
+        <p class="text-xs text-destructive">{props.error}</p>
+      </Show>
     </div>
   )
 }

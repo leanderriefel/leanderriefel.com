@@ -463,7 +463,9 @@ export const FileDialog = (props: FileDialogProps) => {
                             {formatDate(entry.type === "file" ? (entry as FileEntry).modified : entry.created)}
                           </span>
                           <span class="w-20 text-right text-xs text-muted-foreground">
-                            {entry.type === "dir" ? "Folder" : fsEntryName(entry.path).split(".").pop()}
+                            <Show when={entry.type === "dir"} fallback={fsEntryName(entry.path).split(".").pop()}>
+                              Folder
+                            </Show>
                           </span>
                           <span class="w-16 text-right text-xs text-muted-foreground">
                             {entry.type === "file" ? formatFileSize((entry as FileEntry).size) : "-"}

@@ -1,5 +1,5 @@
 import { XIcon, MinusIcon, SquareIcon, Maximize2Icon, CopyIcon } from "lucide-solid"
-import { For, Suspense, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { For, Suspense, createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { OsWindow, createAppInstance } from "~/os"
 import {
   bringToFront,
@@ -289,7 +289,9 @@ export const Window = (props: OsWindow) => {
               >
                 <IconButton
                   icon={
-                    props.display === "maximized" ? <SquareIcon class="size-3" /> : <Maximize2Icon class="size-3" />
+                    <Show when={props.display === "maximized"} fallback={<Maximize2Icon class="size-3" />}>
+                      <SquareIcon class="size-3" />
+                    </Show>
                   }
                   aria-label={props.display === "maximized" ? "Restore" : "Maximize"}
                   variant="success"
@@ -382,10 +384,16 @@ export const Window = (props: OsWindow) => {
           Minimize
         </ContextMenuItem>
         <ContextMenuItem
-          icon={props.display === "maximized" ? <Maximize2Icon class="size-4" /> : <SquareIcon class="size-4" />}
+          icon={
+            <Show when={props.display === "maximized"} fallback={<SquareIcon class="size-4" />}>
+              <Maximize2Icon class="size-4" />
+            </Show>
+          }
           onSelect={handleMaximize}
         >
-          {props.display === "maximized" ? "Restore" : "Maximize"}
+          <Show when={props.display === "maximized"} fallback={"Maximize"}>
+            Restore
+          </Show>
         </ContextMenuItem>
         <ContextMenuItem icon={<CopyIcon class="size-4" />} onSelect={handleDuplicate}>
           Duplicate Window

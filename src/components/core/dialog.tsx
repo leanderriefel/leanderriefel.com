@@ -8,7 +8,7 @@ import {
   type DialogTriggerProps as DialogPrimitiveTriggerProps,
 } from "@kobalte/core/dialog"
 import { cva, type VariantProps } from "class-variance-authority"
-import { splitProps, type ParentProps } from "solid-js"
+import { Show, splitProps, type ParentProps } from "solid-js"
 import { cn } from "~/os/utils"
 import { XIcon } from "lucide-solid"
 
@@ -176,7 +176,9 @@ export const AlertDialog = (props: AlertDialogProps) => {
       <DialogContent size="sm" showClose={false}>
         <DialogHeader>
           <DialogTitle>{props.title}</DialogTitle>
-          {props.description && <DialogDescription>{props.description}</DialogDescription>}
+          <Show when={props.description}>
+            <DialogDescription>{props.description}</DialogDescription>
+          </Show>
         </DialogHeader>
         <DialogFooter>
           <button

@@ -9,7 +9,7 @@ import {
   type ContextMenuTriggerProps as ContextMenuPrimitiveTriggerProps,
 } from "@kobalte/core/context-menu"
 import { cva, type VariantProps } from "class-variance-authority"
-import { splitProps, type JSX, type ParentProps } from "solid-js"
+import { Show, splitProps, type JSX, type ParentProps } from "solid-js"
 import { cn } from "~/os/utils"
 
 type ContextMenuPrimitiveSeparatorDivProps = ContextMenuPrimitiveSeparatorProps<"div">
@@ -91,9 +91,13 @@ export const ContextMenuItem = (props: ContextMenuItemProps) => {
       onSelect={local.onSelect}
       {...rest}
     >
-      {local.icon && <span class="flex size-4 items-center justify-center text-muted-foreground/80">{local.icon}</span>}
+      <Show when={local.icon}>
+        <span class="flex size-4 items-center justify-center text-muted-foreground/80">{local.icon}</span>
+      </Show>
       <span class="flex flex-1 items-center text-left">{local.children}</span>
-      {local.shortcut && <span class="ml-auto text-xs tracking-wide text-muted-foreground/80">{local.shortcut}</span>}
+      <Show when={local.shortcut}>
+        <span class="ml-auto text-xs tracking-wide text-muted-foreground/80">{local.shortcut}</span>
+      </Show>
     </ContextMenuPrimitive.Item>
   )
 }

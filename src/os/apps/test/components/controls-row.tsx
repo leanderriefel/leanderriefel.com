@@ -1,4 +1,4 @@
-import type { Accessor, Setter } from "solid-js"
+import { type Accessor, type Setter, Show } from "solid-js"
 import {
   Button,
   Tooltip,
@@ -34,10 +34,17 @@ export const ControlsRow = (props: ControlsRowProps) => {
       <Tooltip content={props.isVisible() ? "Hide counter section" : "Show counter section"}>
         <Button
           variant="ghost"
-          leftIcon={props.isVisible() ? <EyeOffIcon class="size-4" /> : <EyeIcon class="size-4" />}
+          leftIcon={
+            <Show when={props.isVisible()} fallback={<EyeIcon class="size-4" />}>
+              <EyeOffIcon class="size-4" />
+            </Show>
+          }
           onClick={() => props.setIsVisible(!props.isVisible())}
         >
-          {props.isVisible() ? "Hide" : "Show"} Counter
+          <Show when={props.isVisible()} fallback={"Show"}>
+            Hide
+          </Show>{" "}
+          Counter
         </Button>
       </Tooltip>
 
