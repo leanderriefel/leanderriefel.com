@@ -40,7 +40,16 @@ const Home = () => {
                   class="text-primary underline underline-offset-4"
                 >
                   https://www.leanderriefel.com/os
-                </A>
+                </A>{" "}
+                /{" "}
+                <a
+                  href="https://github.com/leanderriefel/leanderriefel.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="text-primary underline underline-offset-4"
+                >
+                  GitHub
+                </a>
               </li>
               <li class="ml-4 list-disc">
                 motion-solid:{" "}
