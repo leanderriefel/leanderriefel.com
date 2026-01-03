@@ -8,7 +8,9 @@ const Home = () => {
       <div class="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-desktop-background p-8 font-mono text-foreground">
         <h1 class="text-xl font-bold">Leander Riefel</h1>
         <h2 class="text-center">
-          Full-stack Software Developer <br /> currently studying Computer Science (B.Sc.) at TU Berlin in Germany.
+          Full-stack Software Developer
+          <br />
+          Currently studying Computer Science (B.Sc.) at TU Berlin in Germany.
         </h2>
         <h3>
           <a href="https://react.dev" target="_blank" rel="noreferrer">
