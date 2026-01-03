@@ -1,4 +1,3 @@
-import { A } from "@solidjs/router"
 import { LegalInfo } from "~/components/legal-info"
 
 const Home = () => {
@@ -35,14 +34,14 @@ const Home = () => {
             <ul>
               <li class="ml-4 list-disc">
                 Leander's OS:{" "}
-                <A
+                <a
                   href="https://www.leanderriefel.com/os"
                   target="_blank"
                   rel="noreferrer"
                   class="text-primary underline underline-offset-4"
                 >
                   https://www.leanderriefel.com/os
-                </A>{" "}
+                </a>{" "}
                 /{" "}
                 <a
                   href="https://github.com/leanderriefel/leanderriefel.com"
@@ -135,7 +134,7 @@ const Home = () => {
             <p>Socials:</p>
             <ul>
               <li class="ml-4 list-disc">
-                Github:{" "}
+                GitHub:{" "}
                 <a
                   href="https://github.com/leanderriefel"
                   target="_blank"
