@@ -54,9 +54,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   },
-  "engines": {
-    "node": ">=24"
-  },
+  "packageManager": "bun@1.3.5",
   "resolutions": {
     "estree-walker": "npm:@benpsnyder/estree-walker@3.0.3"
   }
