@@ -72,7 +72,7 @@ const Home = () => {
                 </a>
               </li>
               <li class="ml-4 list-disc">
-                Ignita (notes app / kinda abandoned):{" "}
+                Ignita:{" "}
                 <a
                   href="https://www.ignita.app"
                   target="_blank"
