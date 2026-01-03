@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap");
 @import "tailwindcss";
 
 @custom-variant dark (&:where([data-kb-theme="dark"], [data-kb-theme="dark"] *));
@@ -67,6 +69,10 @@
 
   /* Transition duration */
   --default-transition-duration: 300ms;
+
+  /* Font families */
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, system-ui, monospace;
 }
 
 @layer base {
@@ -256,58 +262,12 @@
   animation-name: slide-in-from-right;
 }
 
-@layer components {
-  .soft-glass {
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, var(--glass-bg-white-start)),
-        rgba(255, 255, 255, var(--glass-bg-white-end))
-      ),
-      linear-gradient(110deg, rgba(0, 0, 0, var(--glass-bg-black-start)), rgba(0, 0, 0, var(--glass-bg-black-end))),
-      radial-gradient(circle at 20% 15%, rgba(255, 255, 255, var(--glass-bg-radial-white-1)), transparent 42%),
-      radial-gradient(circle at 80% 12%, rgba(255, 255, 255, var(--glass-bg-radial-white-2)), transparent 38%);
-    background-blend-mode: overlay, normal, overlay, overlay;
-    border: 1px solid rgba(var(--glass-border-color), var(--glass-border-alpha));
-    backdrop-filter: blur(9px) saturate(110%) contrast(103%);
-    -webkit-backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+@keyframes dot {
+  0%,
+  100% {
+    opacity: 0;
   }
-
-  .soft-chip {
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, var(--glass-bg-white-start)),
-        rgba(255, 255, 255, var(--glass-bg-white-end))
-      ),
-      linear-gradient(110deg, rgba(0, 0, 0, var(--glass-bg-black-start)), rgba(0, 0, 0, var(--glass-bg-black-end))),
-      radial-gradient(circle at 20% 15%, rgba(255, 255, 255, var(--glass-bg-radial-white-1)), transparent 42%),
-      radial-gradient(circle at 80% 12%, rgba(255, 255, 255, var(--glass-bg-radial-white-2)), transparent 38%);
-    background-blend-mode: overlay, normal, overlay, overlay;
-    border: 1px solid rgba(var(--glass-border-color), var(--glass-border-alpha));
-    backdrop-filter: blur(9px) saturate(110%) contrast(103%);
-    -webkit-backdrop-filter: blur(9px) saturate(110%) contrast(103%);
-  }
-
-  /* Border wrapper for motion layout animations - acts as border via padding */
-  .soft-chip-border {
-    padding: 1px;
-    background: rgba(var(--glass-border-color), var(--glass-border-alpha));
-  }
-
-  /* Same as soft-chip but without border - for use with motion layout animations */
-  .soft-chip-inner {
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, var(--glass-bg-white-start)),
-        rgba(255, 255, 255, var(--glass-bg-white-end))
-      ),
-      linear-gradient(110deg, rgba(0, 0, 0, var(--glass-bg-black-start)), rgba(0, 0, 0, var(--glass-bg-black-end))),
-      radial-gradient(circle at 20% 15%, rgba(255, 255, 255, var(--glass-bg-radial-white-1)), transparent 42%),
-      radial-gradient(circle at 80% 12%, rgba(255, 255, 255, var(--glass-bg-radial-white-2)), transparent 38%);
-    background-blend-mode: overlay, normal, overlay, overlay;
-    backdrop-filter: blur(9px) saturate(110%) contrast(103%);
-    -webkit-backdrop-filter: blur(9px) saturate(110%) contrast(103%);
+  50% {
+    opacity: 1;
   }
 }
