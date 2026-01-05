@@ -472,6 +472,86 @@ async function ensureDefaultFolders() {
       await _mkdir(folderPath, { parents: true })
     }
   }
+
+  // Create sample .dash script on first run
+  const sampleScriptPath = "/welcome.dash" as FsPath
+  const existingScript = await _getEntry(sampleScriptPath)
+  if (!existingScript) {
+    const sampleScript = `# Welcome to Dash Shell!
+# This is a sample script demonstrating the Dash scripting language.
+# Run this script with: run /welcome.dash
+
+echo "================================"
+echo "   Welcome to Leander's OS!"
+echo "================================"
+echo ""
+
+# Variables
+var name = "Guest"
+var version = "1.0"
+
+echo "Hello, $name!"
+echo "You are running Dash Shell v$version"
+echo ""
+
+# Arithmetic
+var a = 10
+var b = 5
+var sum = $a + $b
+var product = $a * $b
+
+echo "Math demo:"
+echo "  $a + $b = $sum"
+echo "  $a * $b = $product"
+echo ""
+
+# Conditionals
+var hour = 14
+
+if $hour < 12
+  echo "Good morning!"
+else if $hour < 18
+  echo "Good afternoon!"
+else
+  echo "Good evening!"
+end
+
+echo ""
+
+# Loops
+echo "Counting to 5:"
+for i in 1 to 5
+  echo "  Count: $i"
+end
+
+echo ""
+
+# Available commands:
+echo "Try these commands:"
+echo "  ls          - List files"
+echo "  cd <dir>    - Change directory"
+echo "  mkdir <dir> - Create directory"
+echo "  touch <file> - Create file"
+echo "  cat <file>  - View file contents"
+echo "  rm <file>   - Remove file"
+echo "  pwd         - Print working directory"
+echo "  clear       - Clear screen"
+echo "  help        - Show all commands"
+echo ""
+echo "You can also open apps by typing their ID:"
+echo "  text-editor"
+echo "  file-explorer"
+echo "  settings"
+echo ""
+echo "Or open files with apps:"
+echo "  text-editor /welcome.dash"
+echo ""
+echo "================================"
+echo "        Have fun exploring!"
+echo "================================"
+`
+    await _writeFile(sampleScriptPath, sampleScript, { mimeType: "text/plain" })
+  }
 }
 
 export const initFs = async () => {

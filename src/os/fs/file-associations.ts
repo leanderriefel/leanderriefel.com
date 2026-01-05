@@ -10,6 +10,7 @@ export type FileAssociations = Record<string, string>
 const DEFAULT_ASSOCIATIONS: FileAssociations = {
   ".app": "__system__",
   ".txt": "text-editor",
+  ".dash": "terminal",
 }
 
 const [associations, setAssociations] = createSignal<FileAssociations>({})

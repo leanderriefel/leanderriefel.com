@@ -12,7 +12,7 @@ export class TextEditorApp extends App {
   static appDescription = "Open and edit plain text files."
   static appColor = "blue"
   static appProtected = false
-  static supportedFileTypes = [".txt", ".md", ".json", ".csv", ".log", ".yml", ".yaml"] as const
+  static supportedFileTypes = [".txt", ".md", ".json", ".csv", ".log", ".yml", ".yaml", ".dash"] as const
 
   id = TextEditorApp.appId
   name = TextEditorApp.appName
