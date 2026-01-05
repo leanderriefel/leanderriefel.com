@@ -6,6 +6,7 @@ import { XIcon, MinusIcon } from "lucide-solid"
 import { Tooltip, TooltipGroup } from "~/components/core"
 import { Badge } from "~/components/core"
 import { cn } from "~/os/utils"
+import { AppIcon } from "~/os/apps/app-icons"
 
 interface TaskbarButtonProps {
   appClass: AppClass
@@ -168,9 +169,10 @@ export const TaskbarButton = (props: TaskbarButtonProps) => {
         >
           {/* Icon Representation */}
           <div class="flex size-full items-center justify-center rounded-lg border border-border bg-secondary shadow-sm transition-all [corner-shape:squircle] group-hover:bg-secondary/80 group-hover:shadow-sm group-active:scale-95 supports-corner-shape:rounded-full">
-            <span class="font-mono text-xs font-bold text-muted-foreground transition-colors group-hover:text-foreground">
-              {props.appClass.appName[0]}
-            </span>
+            <AppIcon
+              icon={props.appClass.appIcon}
+              class="size-4 text-muted-foreground transition-colors group-hover:text-foreground"
+            />
           </div>
 
           {/* Window Count Indicator */}

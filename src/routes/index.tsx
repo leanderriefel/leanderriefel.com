@@ -35,12 +35,18 @@ const Home = () => {
               <li class="ml-4 list-disc">
                 Leander's OS:{" "}
                 <a
-                  href="https://www.leanderriefel.com/os"
-                  target="_blank"
+                  href={
+                    process.env.NODE_ENV === "development"
+                      ? "http://localhost:3000/os"
+                      : "https://www.leanderriefel.com/os"
+                  }
+                  target={process.env.NODE_ENV === "development" ? "_self" : "_blank"}
                   rel="noreferrer"
                   class="text-primary underline underline-offset-4"
                 >
-                  https://www.leanderriefel.com/os
+                  {process.env.NODE_ENV === "development"
+                    ? "http://localhost:3000/os"
+                    : "https://www.leanderriefel.com/os"}
                 </a>{" "}
                 /{" "}
                 <a

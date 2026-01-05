@@ -13,6 +13,7 @@ import { openApp } from "~/os/windows/open-windows"
 import { SettingsApp } from "~/os/apps/settings"
 import { OsLogo } from "./os-logo"
 import { cn } from "~/os/utils"
+import { AppIcon } from "~/os/apps/app-icons"
 
 export const StartMenuButton = () => {
   const [open, setOpen] = createSignal(false)
@@ -94,8 +95,8 @@ export const StartMenuButton = () => {
                       {(appClass) => (
                         <DropdownMenuItem variant="glass" class="group" onSelect={() => launchApp(appClass)}>
                           <div class="flex items-center gap-3">
-                            <div class="flex size-7 items-center justify-center rounded-lg border border-border font-mono text-xs font-bold text-muted-foreground transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
-                              {appClass.appName[0]}
+                            <div class="flex size-7 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors group-hover:text-foreground group-focus-visible:text-foreground">
+                              <AppIcon icon={appClass.appIcon} class="size-4" />
                             </div>
                             <div class="flex flex-col leading-tight">
                               <span class="font-medium text-foreground">{appClass.appName}</span>

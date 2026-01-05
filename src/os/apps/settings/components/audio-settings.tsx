@@ -1,12 +1,18 @@
 import { Volume2Icon, Volume1Icon, VolumeXIcon, VolumeIcon } from "lucide-solid"
+import { Show, type Accessor } from "solid-js"
 import { Switch } from "~/components/core"
 import { useAudio } from "~/os/api"
 
-const VolumeIconDynamic = (props: { volume: number; muted: boolean; class?: string }) => {
-  if (props.muted) return <VolumeXIcon class={props.class} />
-  if (props.volume === 0) return <VolumeIcon class={props.class} />
-  if (props.volume <= 50) return <Volume1Icon class={props.class} />
-  return <Volume2Icon class={props.class} />
+const VolumeIconDynamic = (props: { volume: Accessor<number>; muted: Accessor<boolean>; class?: string }) => {
+  return (
+    <Show when={!props.muted()} fallback={<VolumeXIcon class={props.class} />}>
+      <Show when={props.volume() > 0} fallback={<VolumeIcon class={props.class} />}>
+        <Show when={props.volume() > 50} fallback={<Volume1Icon class={props.class} />}>
+          <Volume2Icon class={props.class} />
+        </Show>
+      </Show>
+    </Show>
+  )
 }
 
 export const AudioSettings = () => {
@@ -23,7 +29,7 @@ export const AudioSettings = () => {
           <span class="text-sm text-muted-foreground">{volume()}%</span>
         </div>
         <div class="flex items-center gap-3">
-          <VolumeIconDynamic volume={volume()} muted={muted()} class="size-5 text-muted-foreground" />
+          <VolumeIconDynamic volume={volume} muted={muted} class="size-5 text-muted-foreground" />
           <input
             type="range"
             min="0"

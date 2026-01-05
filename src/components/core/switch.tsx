@@ -36,9 +36,9 @@ const thumbVariants = cva(
 )
 
 const thumbTranslate: Record<NonNullable<VariantProps<typeof switchVariants>["size"]>, { on: string; off: string }> = {
-  sm: { on: "translateX(12px)", off: "translateX(2px)" },
-  md: { on: "translateX(18px)", off: "translateX(2px)" },
-  lg: { on: "translateX(22px)", off: "translateX(2px)" },
+  sm: { on: "translateX(13px)", off: "translateX(2px)" },
+  md: { on: "translateX(19px)", off: "translateX(2px)" },
+  lg: { on: "translateX(23px)", off: "translateX(2px)" },
 }
 
 export interface SwitchProps
@@ -64,7 +64,7 @@ export const Switch = (props: SwitchProps) => {
       disabled={local.disabled}
       class={cn(
         switchVariants({ size: size() }),
-        "border-input bg-input data-checked:border-primary data-checked:bg-primary",
+        "border-input bg-input data-checked:border-tertiary data-checked:bg-tertiary",
         local.class,
       )}
       {...rest}

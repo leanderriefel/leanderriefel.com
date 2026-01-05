@@ -23,6 +23,9 @@
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
 
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-foreground: var(--tertiary-foreground);
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
@@ -95,6 +98,9 @@
     --secondary: oklch(0.96 0 0);
     --secondary-foreground: oklch(0.12 0.0224 296.57deg);
 
+    --tertiary: oklch(0.4 0.147 306deg);
+    --tertiary-foreground: oklch(0.98 0 0);
+
     --muted: oklch(0.96 0 0);
     --muted-foreground: oklch(0.45 0 0);
 
@@ -138,6 +144,9 @@
 
     --secondary: oklch(0.22 0 296.57deg);
     --secondary-foreground: oklch(0.98 0 0);
+
+    --tertiary: oklch(0.69 0.14 315deg);
+    --tertiary-foreground: oklch(0.98 0 0);
 
     --muted: oklch(0.22 0 296.57deg);
     --muted-foreground: oklch(0.7 0 0);

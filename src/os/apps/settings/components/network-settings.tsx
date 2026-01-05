@@ -20,15 +20,6 @@ export const NetworkSettings = () => {
         </div>
         <Switch checked={enabled()} onCheckedChange={(checked) => setEnabled(checked)} size="sm" />
       </div>
-
-      {/* Status Display */}
-      <div class="rounded-lg bg-muted/50 p-3">
-        <p class="text-sm text-muted-foreground">
-          <Show when={enabled()} fallback="WiFi is turned off">
-            WiFi is enabled
-          </Show>
-        </p>
-      </div>
     </div>
   )
 }

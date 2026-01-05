@@ -75,7 +75,10 @@ const OSContent = clientOnly(
             <WindowManager />
 
             {/* Taskbar */}
-            <div class="absolute inset-x-0 bottom-4 z-50 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4">
+            <div
+              class="absolute inset-x-0 bottom-4 z-50 grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4"
+              data-taskbar
+            >
               <div class="flex w-full items-center justify-start gap-3">
                 <TaskbarControls />
               </div>
