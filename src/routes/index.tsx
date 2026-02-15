@@ -126,12 +126,12 @@ const Home = () => {
               <li class="ml-4 list-disc">
                 Email:{" "}
                 <a
-                  href="mailto:leander@leanderriefel.com"
+                  href="mailto:riefel.leander@gmail.com"
                   target="_blank"
                   rel="noreferrer"
                   class="text-primary underline underline-offset-4"
                 >
-                  leander@leanderriefel.com
+                  riefel.leander@gmail.com
                 </a>
               </li>
             </ul>
