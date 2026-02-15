@@ -50,8 +50,8 @@ export const LegalInfo = () => {
                   </a>
                 </li>
                 <li>
-                  <a href="mailto:leander@leanderriefel.com" class="text-primary hover:underline">
-                    leander@leanderriefel.com
+                  <a href="mailto:riefel.leander@gmail.com" class="text-primary hover:underline">
+                    riefel.leander@gmail.com
                   </a>
                 </li>
                 <li>
