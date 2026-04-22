@@ -33,30 +33,7 @@ const Home = () => {
             <p>Projects:</p>
             <ul>
               <li class="ml-4 list-disc">
-                Leander's OS:{" "}
-                <a
-                  href={
-                    process.env.NODE_ENV === "development"
-                      ? "http://localhost:3000/os"
-                      : "https://www.leanderriefel.com/os"
-                  }
-                  target={process.env.NODE_ENV === "development" ? "_self" : "_blank"}
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  {process.env.NODE_ENV === "development"
-                    ? "http://localhost:3000/os"
-                    : "https://www.leanderriefel.com/os"}
-                </a>{" "}
-                /{" "}
-                <a
-                  href="https://github.com/leanderriefel/leanderriefel.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  GitHub
-                </a>
+                quieter.email —— ai-native email client, API, and support platform built for power users and businesses
               </li>
               <li class="ml-4 list-disc">
                 motion-solid:{" "}
@@ -71,26 +48,6 @@ const Home = () => {
                 /{" "}
                 <a
                   href="https://github.com/leanderriefel/motion-solid"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li class="ml-4 list-disc">
-                Ignita:{" "}
-                <a
-                  href="https://www.ignita.app"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  https://www.ignita.app
-                </a>{" "}
-                /{" "}
-                <a
-                  href="https://github.com/leanderriefel/ignita"
                   target="_blank"
                   rel="noreferrer"
                   class="text-primary underline underline-offset-4"
