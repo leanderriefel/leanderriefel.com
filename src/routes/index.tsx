@@ -33,7 +33,7 @@ const Home = () => {
             <p>Projects:</p>
             <ul>
               <li class="ml-4 list-disc">
-                quieter.email —— ai-native email client, API, and support platform built for power users and businesses
+                currently building: quieter.email —— ai-native email client, API, and support platform built for power users and businesses
               </li>
               <li class="ml-4 list-disc">
                 motion-solid:{" "}
