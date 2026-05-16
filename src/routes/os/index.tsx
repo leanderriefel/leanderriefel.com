@@ -63,10 +63,10 @@ const OSContent = clientOnly(
               class="absolute inset-0 z-0"
               style={{
                 background: `
-              radial-gradient(ellipse 110% 70% at 25% 80%, rgba(147, 51, 234, var(--gradient-alpha-purple)), transparent 55%),
-              radial-gradient(ellipse 130% 60% at 75% 15%, rgba(59, 130, 246, var(--gradient-alpha-blue)), transparent 65%),
-              radial-gradient(ellipse 80% 90% at 20% 30%, rgba(236, 72, 153, var(--gradient-alpha-pink)), transparent 50%),
-              radial-gradient(ellipse 100% 40% at 60% 70%, rgba(16, 185, 129, var(--gradient-alpha-green)), transparent 45%),
+              radial-gradient(ellipse 110% 70% at 25% 80%, rgb(107 107 107 / var(--gradient-alpha-purple)), transparent 55%),
+              radial-gradient(ellipse 130% 60% at 75% 15%, rgb(163 163 163 / var(--gradient-alpha-blue)), transparent 65%),
+              radial-gradient(ellipse 80% 90% at 20% 30%, rgb(209 209 209 / var(--gradient-alpha-pink)), transparent 50%),
+              radial-gradient(ellipse 100% 40% at 60% 70%, rgb(73 73 73 / var(--gradient-alpha-green)), transparent 45%),
               var(--color-desktop-background)
             `,
               }}

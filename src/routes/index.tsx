@@ -30,52 +30,26 @@ const Home = () => {
         </h3>
         <div class="w-full max-w-fit space-y-4 text-left max-sm:text-sm">
           <div>
-            <p>Projects:</p>
-            <ul>
-              <li class="ml-4 list-disc">
-                currently building: quieter.email —— ai-native email client, API, and support platform built for power users and businesses
-              </li>
-              <li class="ml-4 list-disc">
-                motion-solid:{" "}
-                <a
-                  href="https://motion-solid.leanderriefel.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  https://motion-solid.leanderriefel.com
-                </a>{" "}
-                /{" "}
-                <a
-                  href="https://github.com/leanderriefel/motion-solid"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li class="ml-4 list-disc">
-                Speedcube Timer:{" "}
-                <a
-                  href="https://speedcube.vercel.app"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  https://speedcube.vercel.app
-                </a>{" "}
-                /{" "}
-                <a
-                  href="https://github.com/leanderriefel/speedcube"
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-primary underline underline-offset-4"
-                >
-                  GitHub
-                </a>
-              </li>
-            </ul>
+            <p>
+              Currently building:{" "}
+              <a
+                href="https://quieter.email"
+                target="_blank"
+                rel="noreferrer"
+                class="text-primary underline underline-offset-4"
+              >
+                quieter.email
+              </a>{" "}
+              /{" "}
+              <a
+                href="https://github.com/quieter-email/quieter"
+                target="_blank"
+                rel="noreferrer"
+                class="text-primary underline underline-offset-4"
+              >
+                GitHub
+              </a>
+            </p>
           </div>
           <div>
             <p>Contact:</p>
